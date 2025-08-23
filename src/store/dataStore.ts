@@ -7,6 +7,7 @@ type ID = OutlineData['id'];
 type DataStore = {
   data: Record<ID, OutlineData>;
   dataOrder: ID[];
+  openNodes: Set<ID>;
   getDataById: (id: ID) => OutlineData | undefined;
   addData: (data: OutlineData) => void;
   updateData: (id: ID, updates: Partial<OutlineData>) => void;
@@ -15,12 +16,18 @@ type DataStore = {
   getChildNodes: (parentId: ID) => OutlineData[];
   getParentNode: (childId: ID) => OutlineData | undefined;
   getSiblingNodes: (nodeId: ID) => OutlineData[];
+  getRootNodes: () => OutlineData[];
+  toggleNode: (nodeId: ID) => void;
+  isNodeOpen: (nodeId: ID) => boolean;
+  expandNode: (nodeId: ID) => void;
+  collapseNode: (nodeId: ID) => void;
 };
 
 
 const useDataStore = createStore<DataStore>((set, get) => ({
   data: {},
   dataOrder: [],
+  openNodes: new Set(),
 
   getDataById: id => get().data[id],
 
@@ -56,21 +63,49 @@ const useDataStore = createStore<DataStore>((set, get) => ({
   },
 
   getParentNode: childId => {
-    const allData = Object.values(get().data);
-    return allData.find(node => 
-      node.childrenIds?.includes(childId)
-    );
+    const child = get().data[childId];
+    return child?.parentId ? get().data[child.parentId] : undefined;
   },
 
   getSiblingNodes: nodeId => {
-    const parent = get().getParentNode(nodeId);
+    const node = get().data[nodeId];
+    if (!node?.parentId) return [];
+    
+    const parent = get().data[node.parentId];
     if (!parent?.childrenIds) return [];
     
     return parent.childrenIds
       .filter(id => id !== nodeId)
       .map(id => get().data[id])
       .filter(Boolean);
-  }
+  },
+
+  getRootNodes: () => {
+    const allNodes = Object.values(get().data);
+    return allNodes.filter(node => !node.parentId || node.parentId === 'root');
+  },
+
+  toggleNode: nodeId => set(state => {
+    const newOpenNodes = new Set(state.openNodes);
+    if (newOpenNodes.has(nodeId)) {
+      newOpenNodes.delete(nodeId);
+    } else {
+      newOpenNodes.add(nodeId);
+    }
+    return { openNodes: newOpenNodes };
+  }),
+
+  isNodeOpen: nodeId => get().openNodes.has(nodeId),
+
+  expandNode: nodeId => set(state => ({
+    openNodes: new Set(state.openNodes).add(nodeId)
+  })),
+
+  collapseNode: nodeId => set(state => {
+    const newOpenNodes = new Set(state.openNodes);
+    newOpenNodes.delete(nodeId);
+    return { openNodes: newOpenNodes };
+  })
 }));
 
 export default useDataStore;

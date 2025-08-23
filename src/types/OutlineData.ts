@@ -5,6 +5,7 @@ interface OutlineData {
   order?: number;
   content?: string;
   childrenIds?: string[];
+  parentId: string;
 }
 
 
