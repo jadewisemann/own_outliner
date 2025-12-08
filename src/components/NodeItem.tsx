@@ -85,11 +85,18 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
         if (e.key === 'Tab') {
             e.preventDefault();
             const state = useOutlinerStore.getState();
-            if (e.shiftKey) {
-                state.outdentNode(id);
-            } else {
-                state.indentNode(id);
-            }
+            // Multi-selection support for Tab
+            const targets = isSelected && state.selectedIds.length > 0 ? state.selectedIds : [id];
+            // We should process carefully. For indentation, maybe reverse order?
+            // Actually store handles logic per node.
+            // If we have selected multiple nodes, we apply logic to all.
+            targets.forEach(targetId => {
+                if (e.shiftKey) {
+                    state.outdentNode(targetId);
+                } else {
+                    state.indentNode(targetId);
+                }
+            });
             return;
         }
 
@@ -218,17 +225,21 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
             }
         } else {
             // --- Edit Mode (Input) ---
+            // Fix: Check for composition to support CJK IME
+            if (e.nativeEvent.isComposing) return;
+
             if (e.key === 'Escape') {
                 e.preventDefault();
                 selectNode(id);
             } else if (e.key === 'Enter') {
                 e.preventDefault();
-                const input = e.currentTarget as HTMLInputElement;
-                const cursorPos = input.selectionStart || 0;
-                splitNode(id, cursorPos);
+                if (inputRef.current) {
+                    const cursorPos = inputRef.current.selectionStart || 0;
+                    splitNode(id, cursorPos);
+                }
             } else if (e.key === 'Backspace') {
-                const input = e.currentTarget as HTMLInputElement;
-                if (input.selectionStart === 0 && input.selectionEnd === 0) {
+                // Ensure we are checking the input
+                if (inputRef.current && inputRef.current.selectionStart === 0 && inputRef.current.selectionEnd === 0) {
                     e.preventDefault();
                     if (node.content.length === 0) {
                         deleteNode(id);
@@ -242,8 +253,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                     deleteNode(id);
                 }
             } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
-                const input = e.target as HTMLInputElement;
-                if (input instanceof HTMLInputElement && input.selectionStart === 0 && input.selectionEnd === input.value.length) {
+                if (inputRef.current && inputRef.current.selectionStart === 0 && inputRef.current.selectionEnd === inputRef.current.value.length) {
                     e.preventDefault();
                     expandSelection(id);
                 }
