@@ -105,7 +105,14 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                 selectNode(id, false);
             } else if (e.key === 'Backspace' || e.key === 'Delete') {
                 e.preventDefault();
-                deleteNode(id);
+                const state = useOutlinerStore.getState();
+                if (state.selectedIds.length > 1) {
+                    state.deleteNodes(state.selectedIds);
+                } else {
+                    deleteNode(id);
+                }
+            } else if (e.key === 'c' && (e.ctrlKey || e.metaKey)) {
+                // Formatting change: Implementation of Copy/Paste logic soon
             } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault();
                 expandSelection(id);

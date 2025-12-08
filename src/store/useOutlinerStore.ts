@@ -329,6 +329,73 @@ export const useOutlinerStore = create<OutlinerState>()(
                 });
             },
 
+            deleteNodes: (ids) => {
+                set((state) => {
+                    if (ids.length === 0) return state;
+
+                    const newNodes = { ...state.nodes };
+                    const parentsToUpdate = new Set<NodeId>();
+                    let nextFocusId = state.focusedId;
+
+                    // Simple strategy for focus: 
+                    // Find the "first" node in the list (visually) and try to focus its previous sibling.
+                    // Or simply focus the parent of the first scheduled deletion if prev sibling not found.
+                    // We can reuse deleteNode's logic if we process one by one, but batch is more efficient.
+
+                    // Let's find the "best" focus candidate before deleting.
+                    // We pick the first valid node from the list.
+                    const firstId = ids[0];
+                    const firstNode = state.nodes[firstId];
+                    if (firstNode && firstNode.parentId) {
+                        const p = state.nodes[firstNode.parentId];
+                        const idx = p.children.indexOf(firstId);
+                        if (idx > 0) {
+                            nextFocusId = p.children[idx - 1];
+                        } else {
+                            nextFocusId = p.id;
+                        }
+                    }
+
+                    // Recursive delete helper (reused)
+                    const deleteRecursively = (targetId: NodeId) => {
+                        const target = newNodes[targetId];
+                        if (target && target.children) {
+                            target.children.forEach(childId => deleteRecursively(childId));
+                        }
+                        delete newNodes[targetId];
+                    };
+
+                    ids.forEach(id => {
+                        const node = state.nodes[id];
+                        if (!node || !node.parentId) return;
+
+                        // Mark parent for update
+                        parentsToUpdate.add(node.parentId);
+
+                        deleteRecursively(id);
+                    });
+
+                    // Update parents
+                    parentsToUpdate.forEach(parentId => {
+                        // Some parents might have been deleted themselves?
+                        // If parent is in newNodes (not deleted), update its children.
+                        if (newNodes[parentId]) {
+                            const parent = newNodes[parentId];
+                            // Filter out all deleted IDs
+                            const newChildren = parent.children.filter(cid => !ids.includes(cid));
+                            newNodes[parentId] = { ...parent, children: newChildren };
+                        }
+                    });
+
+                    return {
+                        nodes: newNodes,
+                        selectedIds: [], // Clear selection after delete
+                        // Only update focus if the current focus was deleted
+                        focusedId: (state.focusedId && ids.includes(state.focusedId)) ? nextFocusId : state.focusedId
+                    };
+                });
+            },
+
             updateContent: (id, content) => {
                 set((state) => ({
                     nodes: {

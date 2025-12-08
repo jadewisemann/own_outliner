@@ -43,4 +43,5 @@ export interface OutlinerState {
     deselectAll: () => void;
     selectRange: (targetId: NodeId) => void; // Select from anchor to target
     expandSelection: (currentId: NodeId) => void; // Smart Ctrl+A logic
+    deleteNodes: (ids: NodeId[]) => void;
 }
