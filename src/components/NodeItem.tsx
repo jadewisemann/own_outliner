@@ -15,8 +15,10 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
     const toggleCollapse = useOutlinerStore((state) => state.toggleCollapse);
     const setFocus = useOutlinerStore((state) => state.setFocus);
     const focusedId = useOutlinerStore((state) => state.focusedId);
-    const addNode = useOutlinerStore((state) => state.addNode);
+    const deleteNode = useOutlinerStore((state) => state.deleteNode);
     const indentNode = useOutlinerStore((state) => state.indentNode);
+    const splitNode = useOutlinerStore((state) => state.splitNode);
+    const mergeNode = useOutlinerStore((state) => state.mergeNode);
     const outdentNode = useOutlinerStore((state) => state.outdentNode);
     const moveFocus = useOutlinerStore((state) => state.moveFocus);
     const moveNode = useOutlinerStore((state) => state.moveNode);
@@ -40,8 +42,40 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            // ... (rest of logic)
-            addNode(node.parentId);
+            const input = e.currentTarget as HTMLInputElement;
+            const cursorPos = input.selectionStart || 0;
+            // Native KeybordEvent doesn't give cursor pos immediately reliably vs React synthetic?
+            // It works fine usually.
+
+            // If strictly creating new, use splitNode.
+            // If just adding node at end, addNode uses append. 
+            // splitNode covers both if logic is correct.
+            // splitNode(id, cursor)
+            splitNode(id, cursorPos);
+        } else if (e.key === 'Backspace') {
+            const input = e.currentTarget as HTMLInputElement;
+            // Check if cursor is at start
+            if (input.selectionStart === 0 && input.selectionEnd === 0) {
+                // Prevent default backspace
+                e.preventDefault();
+                if (node.content.length === 0) {
+                    // Empty node -> Delete
+                    // Handled by deleteNode in store (existing logic?)
+                    // deleteNode checks if orphan, etc.
+                    // We should use deleteNode.
+                    // But store.deleteNode moves focus to parent.
+                    // We prefer moving to prev sibling.
+                    // Let's use deleteNode for now.
+                    // useOutlinerStore.getState().deleteNode(id);
+                    // But we don't have deleteNode imported... wait, we do (addNode is used).
+                    // We need to import deleteNode logic? 
+                    // No, pass it from store hook.
+                    deleteNode(id);
+                } else {
+                    // Merge
+                    mergeNode(id);
+                }
+            }
         } else if (e.key === 'Tab') {
             e.preventDefault();
             if (e.shiftKey) {

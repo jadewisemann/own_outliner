@@ -26,4 +26,12 @@ export interface OutlinerState {
     setHoistedNode: (id: NodeId | null) => void;
     // Complex action
     pasteNodes: (parentId: NodeId, index: number, nodes: { content: string, children: any[] }[]) => void;
+    splitNode: (id: NodeId, cursorPosition: number) => void;
+    mergeNode: (id: NodeId) => void;
+
+    // Settings
+    settings: {
+        splitBehavior: 'sibling' | 'child';
+    };
+    setSetting: (key: 'splitBehavior', value: 'sibling' | 'child') => void;
 }

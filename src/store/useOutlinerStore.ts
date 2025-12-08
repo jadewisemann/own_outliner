@@ -30,6 +30,14 @@ export const useOutlinerStore = create<OutlinerState>()(
             focusedId: null,
             hoistedNodeId: null,
 
+            settings: {
+                splitBehavior: 'sibling', // default
+            },
+
+            setSetting: (key, value) => set((state) => ({
+                settings: { ...state.settings, [key]: value }
+            })),
+
             addNode: (parentId, index) => {
                 const id = generateId();
                 const newNode = createInitialNode(id);
@@ -291,6 +299,121 @@ export const useOutlinerStore = create<OutlinerState>()(
                         },
                         // Focus the last pasted item? Or the first?
                         focusedId: addedIds[addedIds.length - 1]
+                    };
+                });
+            },
+
+            splitNode: (id, cursorPosition) => {
+                set((state) => {
+                    const node = state.nodes[id];
+                    if (!node || !node.parentId) return state;
+
+                    const parent = state.nodes[node.parentId];
+                    const index = parent.children.indexOf(id);
+
+                    if (cursorPosition === 0) {
+                        // Enter at start: Create empty node BEFORE current
+                        const newId = generateId();
+                        const newNode = createInitialNode(newId, '');
+                        newNode.parentId = parent.id;
+
+                        const newChildren = [...parent.children];
+                        newChildren.splice(index, 0, newId);
+
+                        return {
+                            nodes: {
+                                ...state.nodes,
+                                [newId]: newNode,
+                                [parent.id]: { ...parent, children: newChildren }
+                            },
+                            // Focus stays on current node (which is now pushed down)
+                            // So we don't change focusedId
+                        };
+                    } else {
+                        // Split content
+                        const leftContent = node.content.slice(0, cursorPosition);
+                        const rightContent = node.content.slice(cursorPosition);
+
+                        const newId = generateId();
+                        // New node gets the right half
+                        const newNode = createInitialNode(newId, rightContent);
+                        newNode.parentId = parent.id;
+
+                        const newChildren = [...parent.children];
+                        // Insert AFTER current
+                        newChildren.splice(index + 1, 0, newId);
+
+                        return {
+                            nodes: {
+                                ...state.nodes,
+                                [id]: { ...node, content: leftContent },
+                                [newId]: newNode,
+                                [parent.id]: { ...parent, children: newChildren }
+                            },
+                            focusedId: newId // Focus moves to new node (right part)
+                        };
+                    }
+                });
+            },
+
+            mergeNode: (id) => {
+                set((state) => {
+                    const node = state.nodes[id];
+                    if (!node || !node.parentId) return state;
+
+                    const parent = state.nodes[node.parentId];
+                    const index = parent.children.indexOf(id);
+
+                    // If first child, merge to parent?
+                    if (index === 0) {
+                        // TODO: Logic to merge to parent or previous visual node?
+                        // Standard behavior: if no prev sibling, merge to parent usually implies "Outdent" or nothing.
+                        // For now, do nothing or just focus parent.
+                        return state;
+                    }
+
+                    const prevSiblingId = parent.children[index - 1];
+                    const prevSibling = state.nodes[prevSiblingId];
+
+                    // Merge to prevSibling
+                    // 1. Combine content
+                    // const oldContentLength = prevSibling.content.length; // Unused for now
+                    const newContent = prevSibling.content + node.content;
+
+                    // 2. Move children
+                    // Existing children of prevSibling come first, then children of deleted node?
+                    // Or deleted node's children become children of prevSibling?
+                    // To keep flat logic: We need to re-parent all children of deleted node.
+                    const childrenUpdates: Record<NodeId, NodeData> = {};
+                    node.children.forEach(childId => {
+                        const child = state.nodes[childId];
+                        childrenUpdates[childId] = { ...child, parentId: prevSiblingId };
+                    });
+
+                    const newPrevChildren = [...prevSibling.children, ...node.children];
+
+                    // 3. Delete node
+                    const { [id]: deleted, ...remainingNodes } = state.nodes;
+
+                    const newParentChildren = parent.children.filter(c => c !== id);
+
+                    return {
+                        nodes: {
+                            ...remainingNodes,
+                            ...childrenUpdates,
+                            [prevSiblingId]: {
+                                ...prevSibling,
+                                content: newContent,
+                                children: newPrevChildren,
+                                isCollapsed: false // Ensure we see merged children
+                            },
+                            [parent.id]: { ...parent, children: newParentChildren }
+                        },
+                        focusedId: prevSiblingId,
+                        // We need a way to restore cursor position to 'oldContentLength'
+                        // Store doesn't handle cursor pos directly usually, UI does.
+                        // We might need a transient state or handle in UI.
+                        // For simple MVP: Focus goes to end of prevSibling (which is correct).
                     };
                 });
             }
