@@ -24,11 +24,13 @@ export type KeyAction =
     | 'outdentNode'
     | 'moveUp'
     | 'moveDown'
-    | 'deleteNode'
+    | 'deleteNode' // General delete (e.g. Backspace on empty)
+    | 'deleteLine' // Explicit delete line (e.g. Cmd+Shift+K)
     | 'copyNode'
     | 'cutNode'
     | 'pasteNode'
-    | 'selectAll'
+    | 'selectAll' // Ctrl+A behavior
+    | 'selectLine' // Ctrl+L behavior
     | 'toggleCollapse';
 
 export interface OutlinerSettings {

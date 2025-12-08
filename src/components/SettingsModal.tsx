@@ -14,11 +14,13 @@ const ACTION_LABELS: Record<KeyAction, string> = {
     outdentNode: 'Outdent',
     moveUp: 'Move Node Up',
     moveDown: 'Move Node Down',
-    deleteNode: 'Delete Node',
+    deleteNode: 'Delete Node (Backspace)',
+    deleteLine: 'Delete Line (Cmd+Shift+K)',
     copyNode: 'Copy Node',
     cutNode: 'Cut Node',
     pasteNode: 'Paste Node',
-    selectAll: 'Select All',
+    selectAll: 'Select All (Focus Text)',
+    selectLine: 'Select Line (Cmd+L)',
     toggleCollapse: 'Toggle Collapse',
 };
 

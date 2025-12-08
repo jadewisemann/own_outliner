@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { useOutlinerStore } from './store/useOutlinerStore';
 import { NodeItem } from './components/NodeItem';
+import { SettingsModal } from './components/SettingsModal';
 
 function App() {
   const rootNodeId = useOutlinerStore((state) => state.rootNodeId);
@@ -9,8 +11,7 @@ function App() {
   const addNode = useOutlinerStore((state) => state.addNode);
   const setHoistedNode = useOutlinerStore((state) => state.setHoistedNode);
 
-  const settings = useOutlinerStore((state) => state.settings);
-  const setSetting = useOutlinerStore((state) => state.setSetting);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   if (!rootNode) return <div className="p-10">Loading...</div>;
 
@@ -20,24 +21,12 @@ function App() {
         <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-teal-400">
           Own Outliner
         </h1>
-        <div className="text-xs flex gap-2">
+        <div className="flex gap-2">
           <button
-            className={`px-2 py-1 rounded border ${settings.splitBehavior === 'auto' ? 'bg-blue-100 border-blue-300' : 'bg-white border-gray-200'}`}
-            onClick={() => setSetting('splitBehavior', 'auto')}
+            className="px-3 py-1.5 rounded text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+            onClick={() => setIsSettingsOpen(true)}
           >
-            Split: Auto
-          </button>
-          <button
-            className={`px-2 py-1 rounded border ${settings.splitBehavior === 'sibling' ? 'bg-blue-100 border-blue-300' : 'bg-white border-gray-200'}`}
-            onClick={() => setSetting('splitBehavior', 'sibling')}
-          >
-            Sibling
-          </button>
-          <button
-            className={`px-2 py-1 rounded border ${settings.splitBehavior === 'child' ? 'bg-blue-100 border-blue-300' : 'bg-white border-gray-200'}`}
-            onClick={() => setSetting('splitBehavior', 'child')}
-          >
-            Child
+            Settings ⚙️
           </button>
         </div>
       </header>
@@ -67,6 +56,8 @@ function App() {
       <div className="fixed bottom-4 right-4 text-xs text-gray-400">
         Local-First Outliner Prototype
       </div>
+
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
 }

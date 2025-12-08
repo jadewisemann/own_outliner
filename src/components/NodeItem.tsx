@@ -115,6 +115,27 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                 return;
             }
 
+            if (isMatch(e, keys.deleteLine)) {
+                e.preventDefault();
+                // "Delete Line" concept: Delete entire node even if not empty
+                if (state.selectedIds.length > 1) {
+                    state.deleteNodes(state.selectedIds);
+                } else {
+                    // Single node delete (deleteNodes handles children logic implicitly by tree structure)
+                    // If we want to strictly emulate "Delete Line" vs "Delete Node", in outliner they are usually same for single line.
+                    state.deleteNodes([id]);
+                }
+                return;
+            }
+
+            if (isMatch(e, keys.selectLine)) {
+                e.preventDefault();
+                if (inputRef.current) {
+                    inputRef.current.select();
+                }
+                return;
+            }
+
             if (isMatch(e, keys.selectAll)) {
                 e.preventDefault();
                 expandSelection(id);
@@ -273,6 +294,20 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                 if (inputRef.current && inputRef.current.selectionStart === 0 && inputRef.current.selectionEnd === inputRef.current.value.length) {
                     e.preventDefault();
                     expandSelection(id);
+                }
+                return;
+            }
+
+            if (isMatch(e, keys.deleteLine)) {
+                e.preventDefault();
+                state.deleteNodes([id]);
+                return;
+            }
+
+            if (isMatch(e, keys.selectLine)) {
+                e.preventDefault();
+                if (inputRef.current) {
+                    inputRef.current.select();
                 }
                 return;
             }
