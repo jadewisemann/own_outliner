@@ -4,8 +4,11 @@ import { Plus } from 'lucide-react';
 
 function App() {
   const rootNodeId = useOutlinerStore((state) => state.rootNodeId);
-  const rootNode = useOutlinerStore((state) => state.nodes[rootNodeId]);
+  const hoistedNodeId = useOutlinerStore((state) => state.hoistedNodeId);
+  const activeRootId = hoistedNodeId || rootNodeId;
+  const rootNode = useOutlinerStore((state) => state.nodes[activeRootId]);
   const addNode = useOutlinerStore((state) => state.addNode);
+  const setHoistedNode = useOutlinerStore((state) => state.setHoistedNode);
 
   if (!rootNode) return <div className="p-10">Loading...</div>;
 
@@ -23,10 +26,17 @@ function App() {
       </header>
 
       <main className="pl-2">
+        {hoistedNodeId && (
+          <div className="mb-4 text-sm text-gray-500 flex items-center gap-1">
+            <span className="cursor-pointer hover:underline" onClick={() => setHoistedNode(null)}>Root</span>
+            <span>/</span>
+            <span className="font-medium text-gray-800">{rootNode.content || 'Untitled'}</span>
+          </div>
+        )}
         {rootNode.children.length === 0 ? (
           <div
             className="text-gray-400 italic cursor-pointer hover:bg-gray-50 p-2 rounded"
-            onClick={() => addNode(rootNodeId)}
+            onClick={() => addNode(activeRootId)}
           >
             Click to start typing...
           </div>

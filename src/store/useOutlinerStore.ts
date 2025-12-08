@@ -28,6 +28,7 @@ export const useOutlinerStore = create<OutlinerState>()(
             },
             rootNodeId: INITIAL_ROOT_ID,
             focusedId: null,
+            hoistedNodeId: null,
 
             addNode: (parentId, index) => {
                 const id = generateId();
@@ -212,6 +213,86 @@ export const useOutlinerStore = create<OutlinerState>()(
                 if (nextIndex >= 0 && nextIndex < flatList.length) {
                     set({ focusedId: flatList[nextIndex] });
                 }
+            },
+
+            moveNode: (id, direction) => {
+                set((state) => {
+                    const node = state.nodes[id];
+                    if (!node || !node.parentId) return state;
+
+                    const parent = state.nodes[node.parentId];
+                    const index = parent.children.indexOf(id);
+                    if (index === -1) return state;
+
+                    const newChildren = [...parent.children];
+
+                    if (direction === 'up') {
+                        if (index === 0) return state; // Already at top
+                        // Swap with previous
+                        [newChildren[index - 1], newChildren[index]] = [newChildren[index], newChildren[index - 1]];
+                    } else {
+                        if (index === parent.children.length - 1) return state; // Already at bottom
+                        // Swap with next
+                        [newChildren[index], newChildren[index + 1]] = [newChildren[index + 1], newChildren[index]];
+                    }
+
+                    return {
+                        nodes: {
+                            ...state.nodes,
+                            [parent.id]: {
+                                ...parent,
+                                children: newChildren,
+                            },
+                        },
+                    };
+                });
+            },
+
+            setHoistedNode: (id) => set({ hoistedNodeId: id }),
+
+            pasteNodes: (parentId, index, nodes) => {
+                set((state) => {
+                    const newNodes: Record<NodeId, NodeData> = {};
+
+                    const processNode = (nodeData: { content: string, children: any[] }, pId: string): string => {
+                        const newId = generateId();
+                        const newChildrenIds = nodeData.children.map(child => processNode(child, newId));
+
+                        newNodes[newId] = {
+                            id: newId,
+                            content: nodeData.content,
+                            parentId: pId,
+                            children: newChildrenIds,
+                            isCollapsed: false
+                        };
+                        return newId;
+                    };
+
+                    const parent = state.nodes[parentId];
+                    if (!parent) return state;
+
+                    const addedIds = nodes.map(node => processNode(node, parentId));
+
+                    const newParentChildren = [...parent.children];
+                    if (typeof index === 'number' && index >= 0) {
+                        newParentChildren.splice(index, 0, ...addedIds);
+                    } else {
+                        newParentChildren.push(...addedIds);
+                    }
+
+                    return {
+                        nodes: {
+                            ...state.nodes,
+                            ...newNodes,
+                            [parent.id]: {
+                                ...parent,
+                                children: newParentChildren
+                            }
+                        },
+                        // Focus the last pasted item? Or the first?
+                        focusedId: addedIds[addedIds.length - 1]
+                    };
+                });
             }
         }),
         {
