@@ -284,27 +284,47 @@ export const useOutlinerStore = create<OutlinerState>()(
             deleteNode: (id) => {
                 set((state) => {
                     const node = state.nodes[id];
-                    if (!node || !node.parentId) return state; // Can't delete root or orphan
+                    if (!node || !node.parentId) return state;
 
                     const parent = state.nodes[node.parentId];
+                    const index = parent.children.indexOf(id);
 
-                    // Remove from parent's children
+                    // Determine next focus target
+                    let nextFocusId = parent.id;
+                    if (index > 0) {
+                        // Focus previous sibling
+                        // Ideally we should focus the LAST visible descendant of the previous sibling
+                        // But for now, focusing the sibling itself is a good MVP.
+                        // Actually, standard behavior is End of Previous Sibling content.
+                        nextFocusId = parent.children[index - 1];
+                    }
+
+                    // Recursive delete helper
+                    const deleteRecursively = (targetId: NodeId, nodesMap: Record<NodeId, NodeData>) => {
+                        const target = nodesMap[targetId];
+                        if (target && target.children) {
+                            target.children.forEach(childId => deleteRecursively(childId, nodesMap));
+                        }
+                        delete nodesMap[targetId];
+                    };
+
+                    const newNodes = { ...state.nodes };
+                    deleteRecursively(id, newNodes);
+
+                    // Update parent children
                     const newParentChildren = parent.children.filter((childId) => childId !== id);
+                    newNodes[parent.id] = { ...parent, children: newParentChildren };
 
-                    // Create new nodes object without the deleted node
-                    // Note: In a real app, we should also delete all descendants recursively.
-                    // For now, let's just remove the link. Garbage collection or recursive delete later.
-                    const { [id]: deleted, ...remainingNodes } = state.nodes;
+                    // Cleanup selection
+                    let newSelectedIds = state.selectedIds;
+                    if (state.selectedIds.includes(id)) {
+                        newSelectedIds = state.selectedIds.filter(sid => sid !== id);
+                    }
 
                     return {
-                        nodes: {
-                            ...remainingNodes,
-                            [parent.id]: {
-                                ...parent,
-                                children: newParentChildren,
-                            },
-                        },
-                        focusedId: parent.id, // Move focus to parent (or prev sibling ideally)
+                        nodes: newNodes,
+                        focusedId: nextFocusId,
+                        selectedIds: newSelectedIds // Prevent zombie selection
                     };
                 });
             },
@@ -514,8 +534,9 @@ export const useOutlinerStore = create<OutlinerState>()(
 
                     } else {
                         // Split content
-                        const leftContent = node.content.slice(0, cursorPosition);
-                        const rightContent = node.content.slice(cursorPosition);
+                        const leftContent = cursorPosition === 0 ? node.content : node.content.slice(0, cursorPosition);
+                        const rightContent = cursorPosition === 0 ? '' : node.content.slice(cursorPosition);
+
                         let behavior = state.settings.splitBehavior;
 
                         // Resolve 'auto' behavior
@@ -523,33 +544,35 @@ export const useOutlinerStore = create<OutlinerState>()(
                             behavior = node.children.length > 0 ? 'child' : 'sibling';
                         }
 
+                        // Special Handling for Cursor at 0 (User request: Don't create line in front)
+                        // If cursor is at 0, we treat it as "Create new node after current one" (like End of line).
+                        // Instead of splitting "" and "Content", we treat it as "Content" and "".
+                        // Logic: Left = Content, Right = "".
+                        // This matches exact behavior of cursor at end.
+
                         const newId = generateId();
+                        // If cursor 0, right is empty. If cursor end, right is empty.
+                        // Logic holds.
+
                         const newNode = createInitialNode(newId, rightContent);
 
                         const nodes = { ...state.nodes };
 
                         if (behavior === 'child') {
                             // Behavior: Child
-                            // Current node becomes parent of new node.
-                            // New node is inserted as FIRST child (to maintain reading flow: Top -> Bottom)
                             newNode.parentId = id;
-
                             const newCurrentChildren = [newId, ...node.children];
 
                             nodes[id] = {
                                 ...node,
                                 content: leftContent,
                                 children: newCurrentChildren,
-                                isCollapsed: false // Auto expand to show new child
+                                isCollapsed: false
                             };
                             nodes[newId] = newNode;
-
-                            // Parent (grandparent) is untouched in structure (except reference update if immutability needed? No, flat state)
-                            // But we modified nodes[id] which is enough.
                         } else {
                             // Behavior: Sibling (Default)
                             newNode.parentId = parent.id;
-
                             const newChildren = [...parent.children];
                             newChildren.splice(index + 1, 0, newId); // Insert AFTER current
 
@@ -630,6 +653,19 @@ export const useOutlinerStore = create<OutlinerState>()(
         }),
         {
             name: 'outliner-storage',
+            partialize: (state) => {
+                // Exclude transient UI state like selection and focus
+                const { selectedIds, selectionAnchorId, focusedId, ...rest } = state;
+                return rest;
+            },
+            onRehydrateStorage: () => (state) => {
+                // Double check to ensure transient state is reset on load
+                if (state) {
+                    state.selectedIds = [];
+                    state.selectionAnchorId = null;
+                    state.focusedId = null;
+                }
+            },
         }
     )
 );

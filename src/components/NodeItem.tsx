@@ -97,8 +97,8 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
             // --- Node Mode ---
             if (e.key === 'Enter') {
                 e.preventDefault();
-                // Switch to Edit Mode
-                selectNode(id, false); // Clear selection, triggers effect to focus input
+                // Switch to Edit Mode (focus input, clear selection)
+                selectNode(id, false);
             } else if (e.key === 'Backspace' || e.key === 'Delete') {
                 e.preventDefault();
                 deleteNode(id);
@@ -108,13 +108,17 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
             }
         } else {
             // --- Edit Mode (Input) ---
-            if (e.key === 'Enter') {
+            if (e.key === 'Escape') {
                 e.preventDefault();
-                const input = e.target as HTMLInputElement;
+                // Switch to Node Mode
+                selectNode(id); // Selects this node (and effect moves focus to Div)
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const input = e.currentTarget as HTMLInputElement; // Use currentTarget for event listener element
                 const cursorPos = input.selectionStart || 0;
                 splitNode(id, cursorPos);
             } else if (e.key === 'Backspace') {
-                const input = e.target as HTMLInputElement;
+                const input = e.currentTarget as HTMLInputElement;
                 if (input.selectionStart === 0 && input.selectionEnd === 0) {
                     e.preventDefault(); // Only prevent if at start
                     if (node.content.length === 0) {
@@ -124,7 +128,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                     }
                 }
             } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
-                const input = e.target as HTMLInputElement;
+                const input = e.currentTarget as HTMLInputElement;
                 if (input.selectionStart === 0 && input.selectionEnd === input.value.length) {
                     e.preventDefault();
                     expandSelection(id);
@@ -182,13 +186,23 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                         updateContent(id, e.target.value);
                     }}
                     onClick={(e) => {
-                        e.stopPropagation(); // Prevent bubbling if needed? 
-                        if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
-                            selectNode(id, false);
+                        e.stopPropagation();
+
+                        if (e.shiftKey || e.metaKey || e.ctrlKey) {
+                            // Modifiers -> Selection Logic
+                            // If Shift+Click, we probably want range? 
+                            // MVP: Toggle selection or standard behavior
+                            // For now let's just allow browser default or handle selection later.
+                            // Logic: If modifier, let's keep Node Mode?
+                            // selectNode(id, ...);
+                        } else {
+                            // Simple Click -> Edit Mode
+                            // Deselect All to remove "Node Selection" (Blue BG)
+                            useOutlinerStore.getState().deselectAll();
                             setFocus(id);
                         }
                     }}
-                    onFocus={(e) => {
+                    onFocus={() => {
                         // If we got focus via Tab? 
                         if (!isSelected && focusedId !== id) setFocus(id);
                     }}
