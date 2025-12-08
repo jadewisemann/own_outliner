@@ -27,6 +27,8 @@ const ACTION_LABELS: Record<KeyAction, string> = {
     formatBold: 'Format Bold (Cmd+B)',
     formatItalic: 'Format Italic (Cmd+I)',
     formatStrike: 'Format Strikethrough (Cmd+Shift+X)',
+    undo: 'Undo (Cmd+Z)',
+    redo: 'Redo (Cmd+Shift+Z)',
 };
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {

@@ -418,6 +418,25 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                 applyFormat('~~');
                 return;
             }
+
+            // Undo / Redo
+            // Note: Zundo attaches 'temporal' to the store
+            if (isMatch(e, keys.undo)) {
+                e.preventDefault();
+                const store = useOutlinerStore as any;
+                if (store.temporal) {
+                    store.temporal.getState().undo();
+                }
+                return;
+            }
+            if (isMatch(e, keys.redo)) {
+                e.preventDefault();
+                const store = useOutlinerStore as any;
+                if (store.temporal) {
+                    store.temporal.getState().redo();
+                }
+                return;
+            }
         }
     };
 

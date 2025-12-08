@@ -36,7 +36,9 @@ export type KeyAction =
     | 'zoomOut'
     | 'formatBold'
     | 'formatItalic'
-    | 'formatStrike';
+    | 'formatStrike'
+    | 'undo'
+    | 'redo';
 
 export interface OutlinerSettings {
     splitBehavior: 'sibling' | 'child' | 'auto';
