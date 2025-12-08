@@ -161,6 +161,30 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                 return;
             }
 
+            if (isMatch(e, keys.zoomIn)) {
+                e.preventDefault();
+                // Zoom into the current node
+                state.setHoistedNode(id);
+                return;
+            }
+
+            if (isMatch(e, keys.zoomOut)) {
+                e.preventDefault();
+                // Zoom out one level from the CURRENT HOISTED VIEW (not necessarily the focused node)
+                const currentHoistedId = state.hoistedNodeId;
+                if (currentHoistedId) {
+                    const currentHoistedNode = state.nodes[currentHoistedId];
+                    // If current hoisted node has a parent, zoom to that parent.
+                    // If parent is root, or null, un-hoist (show root).
+                    if (currentHoistedNode && currentHoistedNode.parentId && currentHoistedNode.parentId !== state.rootNodeId) {
+                        state.setHoistedNode(currentHoistedNode.parentId);
+                    } else {
+                        state.setHoistedNode(null); // Go to Root
+                    }
+                }
+                return;
+            }
+
             // Clipboard
             if (isMatch(e, keys.copyNode)) {
                 e.preventDefault();

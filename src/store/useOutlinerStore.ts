@@ -763,7 +763,7 @@ export const useOutlinerStore = create<OutlinerState>()(
         }),
         {
             name: 'outliner-storage',
-            version: 2,
+            version: 3,
             migrate: (persistedState: any, version: number) => {
                 let state = persistedState;
                 if (version === 0) {
@@ -780,17 +780,45 @@ export const useOutlinerStore = create<OutlinerState>()(
 
                 if (version < 2) {
                     // Migration v1 -> v2: Add missing new keybindings (deleteLine, selectLine)
-                    // We merge defaults into existing bindings so new keys are added but user overrides are kept
                     state = {
                         ...state,
                         settings: {
                             ...state.settings,
                             keybindings: {
-                                ...defaultKeybindings,
+                                ...defaultKeybindings, // this has basics
                                 ...(state.settings?.keybindings || {})
                             }
                         }
                     };
+                    // Ensure v2 keys specifically if defaultKeybindings didn't have them at the time (simulated)
+                    // But effectively re-merging defaultKeybindings works.
+                }
+
+                if (version < 3) {
+                    // Migration v2 -> v3: Add zoomIn, zoomOut, update toggleCollapse
+                    state = {
+                        ...state,
+                        settings: {
+                            ...state.settings,
+                            keybindings: {
+                                ...defaultKeybindings, // Contains new zoom keys and updated toggleCollapse
+                                ...(state.settings?.keybindings || {})
+                                // Note: This might overwrite user's custom toggleCollapse if they customized it? 
+                                // If they customized it, it's in state.settings.keybindings.
+                                // If we want to FORCE update toggleCollapse to avoid conflict, we might need explicit set.
+                                // But safer to just add missing properties.
+                            }
+                        }
+                    };
+                    // Explicitly inject zoomIn/zoomOut if missing (in case user customization shadowed default merge)
+                    if (!state.settings.keybindings.zoomIn) state.settings.keybindings.zoomIn = defaultKeybindings.zoomIn;
+                    if (!state.settings.keybindings.zoomOut) state.settings.keybindings.zoomOut = defaultKeybindings.zoomOut;
+                    // Force update toggleCollapse default if it was old default (Cmd+.)
+                    // Check if old binding matches conflicting one
+                    const oldToggle = state.settings.keybindings.toggleCollapse;
+                    if (oldToggle && oldToggle.key === '.' && !!oldToggle.meta) {
+                        state.settings.keybindings.toggleCollapse = defaultKeybindings.toggleCollapse;
+                    }
                 }
 
                 return state;

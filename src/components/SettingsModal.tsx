@@ -21,7 +21,9 @@ const ACTION_LABELS: Record<KeyAction, string> = {
     pasteNode: 'Paste Node',
     selectAll: 'Select All (Focus Text)',
     selectLine: 'Select Line (Cmd+L)',
-    toggleCollapse: 'Toggle Collapse',
+    toggleCollapse: 'Toggle Collapse (Cmd+Enter)',
+    zoomIn: 'Zoom In (Cmd + .)',
+    zoomOut: 'Zoom Out (Cmd + ,)',
 };
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {

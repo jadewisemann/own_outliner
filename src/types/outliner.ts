@@ -31,7 +31,9 @@ export type KeyAction =
     | 'pasteNode'
     | 'selectAll' // Ctrl+A behavior
     | 'selectLine' // Ctrl+L behavior
-    | 'toggleCollapse';
+    | 'toggleCollapse'
+    | 'zoomIn'
+    | 'zoomOut';
 
 export interface OutlinerSettings {
     splitBehavior: 'sibling' | 'child' | 'auto';
