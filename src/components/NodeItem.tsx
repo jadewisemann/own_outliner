@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useOutlinerStore } from '../store/useOutlinerStore';
 import type { NodeId } from '../types/outliner';
-import { ChevronRight, ChevronDown } from 'lucide-react';
+import { ChevronRight, ChevronDown, ZoomIn } from 'lucide-react';
 import { isMatch } from '../utils/keybindings';
 
 interface NodeItemProps {
@@ -392,7 +392,20 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                 onKeyDown={handleKeyDown}
             >
                 {/* Bullet / Toggle */}
-                <div className="w-6 h-6 flex items-center justify-center mr-1 cursor-pointer text-gray-400 hover:text-gray-600">
+                <div className="w-6 h-6 flex items-center justify-center mr-1 cursor-pointer text-gray-400 hover:text-gray-600 relative group/bullet">
+                    {/* Zoom Button (only visible on hover) */}
+                    <div
+                        className="absolute right-full mr-1 opacity-0 group-hover/bullet:opacity-100 transition-opacity p-0.5 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-600"
+                        title="Zoom In"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            useOutlinerStore.getState().setHoistedNode(id);
+                        }}
+                    >
+                        <ZoomIn size={14} />
+                    </div>
+                    {/* Actually, user requested 'Zoom In Icon'. I'll add ZoomIn import later or use a simple visual for now. */}
+
                     <span onClick={(e) => { e.stopPropagation(); toggleCollapse(id); }}>
                         {node.children.length > 0 && (
                             !node.isCollapsed ? <ChevronDown size={14} /> : <ChevronRight size={14} />
