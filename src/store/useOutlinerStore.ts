@@ -15,6 +15,11 @@ const createInitialNode = (id: string, content: string = ''): NodeData => ({
     isCollapsed: false,
 });
 
+const defaultSettings = {
+    splitBehavior: 'auto' as const,
+    keybindings: defaultKeybindings,
+};
+
 export const useOutlinerStore = create<OutlinerState>()(
     persist(
         (set, get) => ({
@@ -32,10 +37,7 @@ export const useOutlinerStore = create<OutlinerState>()(
             focusCursorPos: null,
             hoistedNodeId: null,
 
-            settings: {
-                splitBehavior: 'auto', // default
-                keybindings: defaultKeybindings,
-            },
+            settings: defaultSettings,
 
             selectedIds: [],
             selectionAnchorId: null,
@@ -103,6 +105,8 @@ export const useOutlinerStore = create<OutlinerState>()(
                 const range = flatList.slice(start, end + 1);
                 set({ selectedIds: range });
             },
+
+
 
             moveFocus: (direction, select = false) => {
                 const state = get();
@@ -746,6 +750,21 @@ export const useOutlinerStore = create<OutlinerState>()(
         }),
         {
             name: 'outliner-storage',
+            version: 1,
+            migrate: (persistedState: any, version: number) => {
+                if (version === 0) {
+                    // Migration from version 0 to 1: Add keybindings
+                    return {
+                        ...persistedState,
+                        settings: {
+                            ...defaultSettings, // Start with defaults
+                            ...persistedState.settings, // Override with existing
+                            keybindings: persistedState.settings?.keybindings || defaultSettings.keybindings // Ensure keybindings exist
+                        }
+                    };
+                }
+                return persistedState;
+            },
             partialize: (state) => {
                 // Exclude transient UI state like selection and focus
                 const { selectedIds, selectionAnchorId, focusedId, ...rest } = state;
@@ -757,6 +776,14 @@ export const useOutlinerStore = create<OutlinerState>()(
                     state.selectedIds = [];
                     state.selectionAnchorId = null;
                     state.focusedId = null;
+
+                    // Fallback safety check if migrate didn't run or state is raw
+                    if (!state.settings || !state.settings.keybindings) {
+                        state.settings = {
+                            splitBehavior: state.settings?.splitBehavior || 'auto',
+                            keybindings: defaultKeybindings
+                        };
+                    }
                 }
             },
         }
