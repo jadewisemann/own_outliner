@@ -763,20 +763,37 @@ export const useOutlinerStore = create<OutlinerState>()(
         }),
         {
             name: 'outliner-storage',
-            version: 1,
+            version: 2,
             migrate: (persistedState: any, version: number) => {
+                let state = persistedState;
                 if (version === 0) {
                     // Migration from version 0 to 1: Add keybindings
-                    return {
-                        ...persistedState,
+                    state = {
+                        ...state,
                         settings: {
                             ...defaultSettings, // Start with defaults
-                            ...persistedState.settings, // Override with existing
-                            keybindings: persistedState.settings?.keybindings || defaultSettings.keybindings // Ensure keybindings exist
+                            ...state.settings, // Override with existing
+                            keybindings: state.settings?.keybindings || defaultSettings.keybindings // Ensure keybindings exist
                         }
                     };
                 }
-                return persistedState;
+
+                if (version < 2) {
+                    // Migration v1 -> v2: Add missing new keybindings (deleteLine, selectLine)
+                    // We merge defaults into existing bindings so new keys are added but user overrides are kept
+                    state = {
+                        ...state,
+                        settings: {
+                            ...state.settings,
+                            keybindings: {
+                                ...defaultKeybindings,
+                                ...(state.settings?.keybindings || {})
+                            }
+                        }
+                    };
+                }
+
+                return state;
             },
             partialize: (state) => {
                 // Exclude transient UI state like selection and focus

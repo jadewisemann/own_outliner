@@ -105,7 +105,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                             }`}
                                         onClick={() => setRecordingAction(action)}
                                     >
-                                        {recordingAction === action ? 'Press keys...' : formatBinding(settings.keybindings[action])}
+                                        {recordingAction === action
+                                            ? 'Press keys...'
+                                            : (settings.keybindings[action] ? formatBinding(settings.keybindings[action]) : '...')}
                                     </button>
                                 </div>
                             ))}
