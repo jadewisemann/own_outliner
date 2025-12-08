@@ -111,8 +111,6 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                 } else {
                     deleteNode(id);
                 }
-            } else if (e.key === 'c' && (e.ctrlKey || e.metaKey)) {
-                // Formatting change: Implementation of Copy/Paste logic soon
             } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault();
                 expandSelection(id);
@@ -122,7 +120,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
             if (e.key === 'Escape') {
                 e.preventDefault();
                 // Switch to Node Mode
-                selectNode(id); // Selects this node (and effect moves focus to Div)
+                selectNode(id);
             } else if (e.key === 'Enter') {
                 e.preventDefault();
                 const input = e.currentTarget as HTMLInputElement; // Use currentTarget for event listener element
@@ -148,21 +146,100 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
         }
     };
 
+    const handleCopy = (e: React.ClipboardEvent) => {
+        if (!isSelected) return; // Only handle in Node Mode
+        e.preventDefault();
+        e.stopPropagation();
+
+        const state = useOutlinerStore.getState();
+        // If multiple selected, copy all. If single, copy self (and children).
+        // If single node selected but not in selectedIds? (Shouldn't happen if isSelected is true)
+        const targets = state.selectedIds.length > 0 ? state.selectedIds : [id];
+
+        // Dynamic import to avoid circular dep issues during render if any (though utils are safe)
+        import('../utils/clipboard').then(({ serializeNodesToClipboard }) => {
+            const { text, json } = serializeNodesToClipboard(targets, state.nodes);
+            if (e.clipboardData) {
+                e.clipboardData.setData('text/plain', text);
+                e.clipboardData.setData('application/json', json); // For internal
+            }
+        });
+    };
+
+    const handleCut = (e: React.ClipboardEvent) => {
+        if (!isSelected) return;
+        handleCopy(e); // Copy first
+        // Then delete
+        // We need to wait for copy? handleCopy is sync (setData).
+        const state = useOutlinerStore.getState();
+        const targets = state.selectedIds.length > 0 ? state.selectedIds : [id];
+        state.deleteNodes(targets);
+    };
+
     const handlePaste = (e: React.ClipboardEvent) => {
-        const text = e.clipboardData.getData('text');
-        if (text.includes('\n')) {
+        // Should work in both modes? 
+        // If in Edit Mode (Input), standard paste puts text in input.
+        // Unless we intercept "multiline" or "structured" paste?
+        // User request: "Logical Copy/Paste".
+        // If I have structured nodes copied, and I paste in input...
+        // If I paste in Node Mode: Paste as siblings/children.
+        // If I paste in Edit Mode: Paste as text? Or smart paste?
+
+        if (isSelected) {
+            // Node Mode Paste: Paste as siblings after current? Or children?
+            // Standard: Paste as siblings after current focus.
             e.preventDefault();
+            e.stopPropagation();
+
+            const json = e.clipboardData.getData('application/json');
+            const text = e.clipboardData.getData('text');
+
             import('../utils/clipboard').then(({ parseIndentedText }) => {
-                const parsed = parseIndentedText(text);
-                if (parsed.length > 0) {
+                let nodesToPaste: any[] = [];
+
+                if (json) {
+                    try {
+                        const parsed = JSON.parse(json);
+                        if (parsed.format === 'outliner/nodes') {
+                            nodesToPaste = parsed.nodes;
+                        }
+                    } catch (err) {
+                        console.error('Failed to parse internal JSON', err);
+                    }
+                }
+
+                if (nodesToPaste.length === 0 && text) {
+                    // Fallback to text parsing
+                    nodesToPaste = parseIndentedText(text);
+                }
+
+                if (nodesToPaste.length > 0) {
                     const state = useOutlinerStore.getState();
                     const parent = state.nodes[node.parentId || ''];
-                    if (!parent) return;
-
-                    const index = parent.children.indexOf(id) + 1;
-                    pasteNodes(parent.id, index, parsed);
+                    if (parent) {
+                        const index = parent.children.indexOf(id) + 1; // After current
+                        pasteNodes(parent.id, index, nodesToPaste);
+                    }
                 }
             });
+        } else {
+            // Edit Mode
+            const text = e.clipboardData.getData('text');
+            if (text.includes('\n')) {
+                e.preventDefault();
+                import('../utils/clipboard').then(({ parseIndentedText }) => {
+                    const parsed = parseIndentedText(text);
+                    // If complex structure, maybe paste as nodes?
+                    if (parsed.length > 0) {
+                        const state = useOutlinerStore.getState();
+                        const parent = state.nodes[node.parentId || ''];
+                        if (parent) {
+                            const index = parent.children.indexOf(id) + 1;
+                            pasteNodes(parent.id, index, parsed);
+                        }
+                    }
+                });
+            }
         }
     };
 
@@ -176,7 +253,11 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                 tabIndex={-1}
                 className="flex items-center group py-1 relative outline-none"
                 style={{ paddingLeft: `${level * 20}px` }}
+                style={{ paddingLeft: `${level * 20}px` }}
                 onKeyDown={handleKeyDown}
+                onCopy={handleCopy}
+                onCut={handleCut}
+                onPaste={handlePaste}
             >
                 {/* Bullet / Toggle */}
                 <div className="w-6 h-6 flex items-center justify-center mr-1 cursor-pointer text-gray-400 hover:text-gray-600">
