@@ -253,7 +253,6 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                 tabIndex={-1}
                 className="flex items-center group py-1 relative outline-none"
                 style={{ paddingLeft: `${level * 20}px` }}
-                style={{ paddingLeft: `${level * 20}px` }}
                 onKeyDown={handleKeyDown}
                 onCopy={handleCopy}
                 onCut={handleCut}
