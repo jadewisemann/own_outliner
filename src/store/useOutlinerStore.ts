@@ -102,7 +102,7 @@ export const useOutlinerStore = create<OutlinerState>()(
                 };
 
                 const flatList: NodeId[] = [];
-                const root = state.nodes[state.rootNodeId]; // activeRootId handled by caller? 
+                // const root = state.nodes[state.rootNodeId]; // activeRootId handled by caller? 
                 // Store uses `hoistedNodeId`?
                 // `moveFocus` should respect hoisting.
                 const effectiveRootId = state.hoistedNodeId || state.rootNodeId;
@@ -135,7 +135,7 @@ export const useOutlinerStore = create<OutlinerState>()(
 
                     // Selection Logic
                     if (select) {
-                        const anchor = state.selectionAnchorId || state.focusedId; // Anchor at OLD focus if null
+                        // const anchor = state.selectionAnchorId || state.focusedId; // Anchor at OLD focus if null
 
                         // We set focus first? No, we need state update.
                         // But we want to call selectRange(nextId) with anchor anchored at old.
@@ -404,36 +404,7 @@ export const useOutlinerStore = create<OutlinerState>()(
                 });
             },
 
-            moveFocus: (direction) => {
-                const state = get();
-                const currentId = state.focusedId;
-                if (!currentId) return;
 
-                // Flatten logic could be optimized, but here is a simple traversal
-                const flattenVisibleNodes = (nodeId: NodeId, list: NodeId[]) => {
-                    list.push(nodeId);
-                    const node = state.nodes[nodeId];
-                    if (!node.isCollapsed && node.children.length > 0) {
-                        node.children.forEach(childId => flattenVisibleNodes(childId, list));
-                    }
-                };
-
-                const flatList: NodeId[] = [];
-                // We start from root's children because root is invisible container
-                const root = state.nodes[state.rootNodeId];
-                root.children.forEach(childId => flattenVisibleNodes(childId, flatList));
-
-                const currentIndex = flatList.indexOf(currentId);
-                if (currentIndex === -1) return;
-
-                let nextIndex = currentIndex;
-                if (direction === 'up') nextIndex = currentIndex - 1;
-                if (direction === 'down') nextIndex = currentIndex + 1;
-
-                if (nextIndex >= 0 && nextIndex < flatList.length) {
-                    set({ focusedId: flatList[nextIndex] });
-                }
-            },
 
             moveNode: (id, direction) => {
                 set((state) => {

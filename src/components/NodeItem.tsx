@@ -2,7 +2,6 @@ import React from 'react';
 import { useOutlinerStore } from '../store/useOutlinerStore';
 import type { NodeId } from '../types/outliner';
 import { ChevronRight, ChevronDown, Circle } from 'lucide-react';
-import { clsx } from 'clsx';
 
 interface NodeItemProps {
     id: NodeId;
@@ -29,104 +28,107 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
     const selectedIds = useOutlinerStore((state) => state.selectedIds);
     const expandSelection = useOutlinerStore((state) => state.expandSelection);
     const isSelected = selectedIds.includes(id);
+    const selectNode = useOutlinerStore((state) => state.selectNode);
 
     const inputRef = React.useRef<HTMLInputElement>(null);
+    const containerRef = React.useRef<HTMLDivElement>(null);
 
     React.useEffect(() => {
-        if (focusedId === id && inputRef.current) {
-            // Prevent fighting with existing focus to avoid cursor jumping if we are just typing
-            if (document.activeElement !== inputRef.current) {
-                inputRef.current.focus();
-                // Optional: set selection to end if navigating?
-                // For now, default focus behavior (usually selects all or start/end depending on browser)
-                // Let's safe-guard: if we just moved up/down, maybe we want to preserve X position? 
-                // That's hard. Let's just focus.
-            }
-        }
-    }, [focusedId, id]);
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            const input = e.currentTarget as HTMLInputElement;
-            const cursorPos = input.selectionStart || 0;
-            // Native KeybordEvent doesn't give cursor pos immediately reliably vs React synthetic?
-            // It works fine usually.
-
-            // If strictly creating new, use splitNode.
-            // If just adding node at end, addNode uses append. 
-            // splitNode covers both if logic is correct.
-            // splitNode(id, cursor)
-            splitNode(id, cursorPos);
-        } else if (e.key === 'Backspace') {
-            const input = e.currentTarget as HTMLInputElement;
-            // Check if cursor is at start
-            if (input.selectionStart === 0 && input.selectionEnd === 0) {
-                // Prevent default backspace
-                e.preventDefault();
-                if (node.content.length === 0) {
-                    // Empty node -> Delete
-                    // Handled by deleteNode in store (existing logic?)
-                    // deleteNode checks if orphan, etc.
-                    // We should use deleteNode.
-                    // But store.deleteNode moves focus to parent.
-                    // We prefer moving to prev sibling.
-                    // Let's use deleteNode for now.
-                    // useOutlinerStore.getState().deleteNode(id);
-                    // But we don't have deleteNode imported... wait, we do (addNode is used).
-                    // We need to import deleteNode logic? 
-                    // No, pass it from store hook.
-                    deleteNode(id);
-                } else {
-                    // Merge
-                    mergeNode(id);
+        if (focusedId === id) {
+            // Decide where to focus
+            if (isSelected) {
+                if (document.activeElement !== containerRef.current && containerRef.current) {
+                    containerRef.current.focus();
+                }
+            } else {
+                if (document.activeElement !== inputRef.current && inputRef.current) {
+                    inputRef.current.focus();
                 }
             }
-        } else if (e.key === 'Tab') {
+        }
+    }, [focusedId, id, isSelected]);
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        // Common navigation that overrides default behavior
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (e.altKey) {
+                moveNode(id, 'up');
+            } else {
+                moveFocus('up', e.shiftKey);
+            }
+            return;
+        }
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (e.altKey) {
+                moveNode(id, 'down');
+            } else {
+                moveFocus('down', e.shiftKey);
+            }
+            return;
+        }
+
+        if (e.key === 'Tab') {
             e.preventDefault();
             if (e.shiftKey) {
                 outdentNode(id);
             } else {
                 indentNode(id);
             }
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            if (e.altKey) {
-                moveNode(id, 'up');
-            } else {
-                moveFocus('up');
-            }
-        } else if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            if (e.altKey) {
-                moveNode(id, 'down');
-            } else {
-                moveFocus('down');
-            }
-        } else if (e.key === '.' && (e.ctrlKey || e.metaKey)) {
+            return;
+        }
+
+        if (e.key === '.' && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
             setHoistedNode(id);
-        } else if (e.key === ',' && (e.ctrlKey || e.metaKey)) {
+            return;
+        }
+
+        if (e.key === ',' && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
-            // Logic to go up one level from CURRENT HOISTED, not current node.
-            // But we are in a node item. 
-            // Simplified: If we hit Ctrl+, anywhere, we probably want to go up from the current VIEW.
-            // So we need to find the parent of the currently hoisted node.
-            // This logic is better placed in the store or calculated here.
-            // For now, let's just unhoist to root for simplicity or check parent.
-            // Ideally: setHoistedNode(nodes[hoistedNodeId].parentId)
-            // But we don't have access to all nodes here efficiently without store lookup.
-            // Let's implement 'zoomOut' action in store if we want to be strict, but for now:
-            // We'll just set to null (Root) as MVP or implement a quick lookup.
             setHoistedNode(null);
-        } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
-            const input = e.currentTarget as HTMLInputElement;
-            // Standard: If text selected, do nothing (let browser expand to all text)
-            // But we want to intercept if ALREADY full.
-            if (input.selectionStart === 0 && input.selectionEnd === input.value.length) {
-                // Text is fully selected, trigger Smart Select
+            return;
+        }
+
+        // Mode-specific handling
+        if (isSelected) {
+            // --- Node Mode ---
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                // Switch to Edit Mode
+                selectNode(id, false); // Clear selection, triggers effect to focus input
+            } else if (e.key === 'Backspace' || e.key === 'Delete') {
+                e.preventDefault();
+                deleteNode(id);
+            } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault();
                 expandSelection(id);
+            }
+        } else {
+            // --- Edit Mode (Input) ---
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const input = e.target as HTMLInputElement;
+                const cursorPos = input.selectionStart || 0;
+                splitNode(id, cursorPos);
+            } else if (e.key === 'Backspace') {
+                const input = e.target as HTMLInputElement;
+                if (input.selectionStart === 0 && input.selectionEnd === 0) {
+                    e.preventDefault(); // Only prevent if at start
+                    if (node.content.length === 0) {
+                        deleteNode(id);
+                    } else {
+                        mergeNode(id);
+                    }
+                }
+            } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
+                const input = e.target as HTMLInputElement;
+                if (input.selectionStart === 0 && input.selectionEnd === input.value.length) {
+                    e.preventDefault();
+                    expandSelection(id);
+                }
             }
         }
     };
@@ -135,38 +137,14 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
         const text = e.clipboardData.getData('text');
         if (text.includes('\n')) {
             e.preventDefault();
-            // Dynamic import to avoid circular dependency or import issue if not ready?
-            // No, just import standard.
             import('../utils/clipboard').then(({ parseIndentedText }) => {
                 const parsed = parseIndentedText(text);
                 if (parsed.length > 0) {
-                    // Insert after current node
-                    // We need index.
-                    // The store action pasteNodes takes parentId and index.
-                    // We don't have index easily here without lookup.
-                    // Let's modify pasteNodes to accept reference sibling ID instead of index?
-                    // Or just do lookup in store action? Store action 'pasteNodesAfter(siblingId, nodes)'?
-                    // Let's use the store to find index.
-                    // Wait, `addNode` finds index. 
-                    // Let's assume for MVP we insert as children of parent, at end?
-                    // No, that's bad UX.
-                    // Let's rely on finding index in store.
-                    // For now, let's just append to parent logic.
-                    // Or better: `pasteNodes` should handle finding index if we pass 'afterNodeId'.
-                    // Let's try to get parent and index if possible.
-                    // Actually index logic is complex here.
-                    // Implementing 'pasteNodesAfter(siblingId, nodes)' in store is better.
-                    // But I already implemented `pasteNodes(parentId, index, nodes)`.
-                    // I can get parentId from node.parentId.
-                    // I can get index from store.nodes[parentId].children.indexOf(id).
-                    // But I need access to store state here?
-                    // `useOutlinerStore.getState().nodes`...
                     const state = useOutlinerStore.getState();
-                    const parent = state.nodes[node.parentId || '']; // Handle root case
-                    if (!parent) return; // Should allow pasting at root if parent null?
-                    // If parent is null, it's root (which we handle as 'root' ID)
+                    const parent = state.nodes[node.parentId || ''];
+                    if (!parent) return;
 
-                    const index = parent.children.indexOf(id) + 1; // Insert AFTER current
+                    const index = parent.children.indexOf(id) + 1;
                     pasteNodes(parent.id, index, parsed);
                 }
             });
@@ -174,16 +152,21 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
     };
 
     return (
-        <div className={`flex flex-col select-none ${isSelected ? 'bg-blue-100 rounded' : ''}`}>
+        <div
+            className={`flex flex-col select-none ${isSelected ? 'bg-blue-100 rounded' : ''}`}
+        >
             {/* Node Row */}
             <div
-                className="flex items-center group py-1 relative"
+                ref={containerRef}
+                tabIndex={-1}
+                className="flex items-center group py-1 relative outline-none"
                 style={{ paddingLeft: `${level * 20}px` }}
+                onKeyDown={handleKeyDown}
             >
                 {/* Bullet / Toggle */}
                 <div className="w-6 h-6 flex items-center justify-center mr-1 cursor-pointer text-gray-400 hover:text-gray-600">
                     {node.children.length > 0 ? (
-                        <button onClick={() => toggleCollapse(id)} className="p-0.5 hover:bg-gray-200 rounded">
+                        <button onClick={(e) => { e.stopPropagation(); toggleCollapse(id); }} className="p-0.5 hover:bg-gray-200 rounded">
                             {node.isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
                         </button>
                     ) : (
@@ -194,14 +177,25 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                 {/* Content */}
                 <input
                     ref={inputRef}
-                    className="flex-1 bg-transparent border-none outline-none text-gray-800 placeholder-gray-300 font-medium"
                     value={node.content}
-                    onChange={(e) => updateContent(id, e.target.value)}
-                    onFocus={() => setFocus(id)}
-                    onKeyDown={handleKeyDown}
+                    onChange={(e) => {
+                        updateContent(id, e.target.value);
+                    }}
+                    onClick={(e) => {
+                        e.stopPropagation(); // Prevent bubbling if needed? 
+                        if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
+                            selectNode(id, false);
+                            setFocus(id);
+                        }
+                    }}
+                    onFocus={(e) => {
+                        // If we got focus via Tab? 
+                        if (!isSelected && focusedId !== id) setFocus(id);
+                    }}
                     onPaste={handlePaste}
-                    placeholder="Type something..."
-                    autoFocus={focusedId === id}
+                    className="flex-1 min-w-0 bg-transparent outline-none ml-2 text-gray-800 font-sans"
+                    placeholder=""
+                    readOnly={isSelected} // Optional: Explicitly readonly when selected (Node mode)
                 />
             </div>
 
