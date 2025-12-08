@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { OutlinerState, NodeData, NodeId } from '../types/outliner';
+import { defaultKeybindings } from '../utils/keybindings';
 
 const generateId = (): string => Math.random().toString(36).substring(2, 9);
 
@@ -33,6 +34,7 @@ export const useOutlinerStore = create<OutlinerState>()(
 
             settings: {
                 splitBehavior: 'auto', // default
+                keybindings: defaultKeybindings,
             },
 
             selectedIds: [],
@@ -40,6 +42,23 @@ export const useOutlinerStore = create<OutlinerState>()(
 
             setSetting: (key, value) => set((state) => ({
                 settings: { ...state.settings, [key]: value }
+            })),
+
+            setKeybinding: (action, binding) => set((state) => ({
+                settings: {
+                    ...state.settings,
+                    keybindings: {
+                        ...state.settings.keybindings,
+                        [action]: binding
+                    }
+                }
+            })),
+
+            resetKeybindings: () => set((state) => ({
+                settings: {
+                    ...state.settings,
+                    keybindings: defaultKeybindings
+                }
             })),
 
             selectNode: (id, multi = false) => set((state) => {

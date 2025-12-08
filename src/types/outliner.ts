@@ -8,12 +8,41 @@ export interface NodeData {
     isCollapsed: boolean;
 }
 
+// Keybindings definitions
+export interface Keybinding {
+    key: string;
+    ctrl?: boolean;
+    shift?: boolean;
+    alt?: boolean;
+    meta?: boolean;
+}
+
+export type KeyAction =
+    | 'splitNode'
+    | 'mergeNode'
+    | 'indentNode'
+    | 'outdentNode'
+    | 'moveUp'
+    | 'moveDown'
+    | 'deleteNode'
+    | 'copyNode'
+    | 'cutNode'
+    | 'pasteNode'
+    | 'selectAll'
+    | 'toggleCollapse';
+
+export interface OutlinerSettings {
+    splitBehavior: 'sibling' | 'child' | 'auto';
+    keybindings: Record<KeyAction, Keybinding>;
+}
+
 export interface OutlinerState {
     nodes: Record<NodeId, NodeData>;
     rootNodeId: NodeId;
     focusedId: NodeId | null;
-    hoistedNodeId: NodeId | null; // The node currently being viewed as root
-    focusCursorPos: number | null; // Optional: specific cursor position on focus
+    hoistedNodeId: NodeId | null;
+    focusCursorPos: number | null;
+
     // Actions
     addNode: (parentId: NodeId | null, index?: number) => void;
     deleteNode: (id: NodeId) => void;
@@ -22,29 +51,30 @@ export interface OutlinerState {
     toggleCollapse: (id: NodeId) => void;
     indentNode: (id: NodeId) => void;
     outdentNode: (id: NodeId) => void;
-    indentNodes: (ids: NodeId[]) => void; // Batch action
-    outdentNodes: (ids: NodeId[]) => void; // Batch action
+    indentNodes: (ids: NodeId[]) => void;
+    outdentNodes: (ids: NodeId[]) => void;
     moveFocus: (direction: 'up' | 'down', select?: boolean) => void;
     moveNode: (id: NodeId, direction: 'up' | 'down') => void;
     setHoistedNode: (id: NodeId | null) => void;
+
     // Complex action
     pasteNodes: (parentId: NodeId, index: number, nodes: { content: string, children: any[] }[]) => void;
     splitNode: (id: NodeId, cursorPosition: number) => void;
     mergeNode: (id: NodeId) => void;
 
     // Settings
-    settings: {
-        splitBehavior: 'sibling' | 'child' | 'auto';
-    };
-    setSetting: (key: 'splitBehavior', value: 'sibling' | 'child' | 'auto') => void;
+    settings: OutlinerSettings;
+    setSetting: <K extends keyof OutlinerSettings>(key: K, value: OutlinerSettings[K]) => void;
+    setKeybinding: (action: KeyAction, binding: Keybinding) => void;
+    resetKeybindings: () => void;
 
     // Selection
-    selectedIds: NodeId[]; // Ordered list of selected IDs for easy range logic? Or Set? Array easier for ordering.
-    selectionAnchorId: NodeId | null; // The node where Shift-selection started
+    selectedIds: NodeId[];
+    selectionAnchorId: NodeId | null;
 
     selectNode: (id: NodeId, multi?: boolean) => void;
     deselectAll: () => void;
-    selectRange: (targetId: NodeId) => void; // Select from anchor to target
-    expandSelection: (currentId: NodeId) => void; // Smart Ctrl+A logic
+    selectRange: (targetId: NodeId) => void;
+    expandSelection: (currentId: NodeId) => void;
     deleteNodes: (ids: NodeId[]) => void;
 }
