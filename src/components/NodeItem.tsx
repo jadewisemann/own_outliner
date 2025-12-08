@@ -62,7 +62,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
         }
     }, [focusedId, id, isSelected, focusCursorPos]);
 
-    if (!node) return null;
+
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         const state = useOutlinerStore.getState();
@@ -95,6 +95,19 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
 
         if (isSelected) {
             // --- Node Mode ---
+            if (isMatch(e, keys.indentNode)) {
+                e.preventDefault();
+                const ids = state.selectedIds.length > 0 ? state.selectedIds : [id];
+                state.indentNodes(ids);
+                return;
+            }
+            if (isMatch(e, keys.outdentNode)) {
+                e.preventDefault();
+                const ids = state.selectedIds.length > 0 ? state.selectedIds : [id];
+                state.outdentNodes(ids);
+                return;
+            }
+
             if (e.key === 'Escape') {
                 // No binding for this yet
             }
@@ -263,6 +276,17 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                     const cursorPos = inputRef.current.selectionStart || 0;
                     splitNode(id, cursorPos);
                 }
+                return;
+            }
+
+            if (isMatch(e, keys.indentNode)) {
+                e.preventDefault();
+                state.indentNodes([id]);
+                return;
+            }
+            if (isMatch(e, keys.outdentNode)) {
+                e.preventDefault();
+                state.outdentNodes([id]);
                 return;
             }
 
