@@ -87,16 +87,12 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
             const state = useOutlinerStore.getState();
             // Multi-selection support for Tab
             const targets = isSelected && state.selectedIds.length > 0 ? state.selectedIds : [id];
-            // We should process carefully. For indentation, maybe reverse order?
-            // Actually store handles logic per node.
-            // If we have selected multiple nodes, we apply logic to all.
-            targets.forEach(targetId => {
-                if (e.shiftKey) {
-                    state.outdentNode(targetId);
-                } else {
-                    state.indentNode(targetId);
-                }
-            });
+
+            if (e.shiftKey) {
+                state.outdentNodes(targets);
+            } else {
+                state.indentNodes(targets);
+            }
             return;
         }
 

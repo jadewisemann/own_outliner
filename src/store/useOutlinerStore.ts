@@ -492,6 +492,38 @@ export const useOutlinerStore = create<OutlinerState>()(
                 });
             },
 
+            indentNodes: (ids) => {
+                const { indentNode } = get();
+                const state = get();
+
+                // Filter top level
+                const topLevelIds = ids.filter(id => {
+                    const node = state.nodes[id];
+                    return node && node.parentId && !ids.includes(node.parentId);
+                });
+
+                // Sort by visual order to avoid messing up sibling relationships during move?
+                // Actually, if we indent A then B (siblings), they both just move in.
+                // We should probably indent them in reverse order? or order?
+                // Let's just iterate topLevelIds.
+                topLevelIds.forEach(id => indentNode(id));
+            },
+
+            outdentNodes: (ids) => {
+                const { outdentNode } = get();
+                const state = get();
+
+                // Filter: Only process nodes whose parent is NOT in the selected list.
+                const topLevelIds = ids.filter(id => {
+                    const node = state.nodes[id];
+                    return node && node.parentId && !ids.includes(node.parentId);
+                });
+
+                // For outdent, order usually matters less, but safe to do reverse or forward.
+                // If we outdent a block, they process independently.
+                topLevelIds.forEach(id => outdentNode(id));
+            },
+
 
 
             moveNode: (id, direction) => {

@@ -20,8 +20,10 @@ export interface OutlinerState {
     updateContent: (id: NodeId, content: string) => void;
     setFocus: (id: NodeId | null, cursorPos?: number | null) => void;
     toggleCollapse: (id: NodeId) => void;
-    indentNode: (id: NodeId) => void; // Placeholder for Phase 3
-    outdentNode: (id: NodeId) => void; // Placeholder for Phase 3
+    indentNode: (id: NodeId) => void;
+    outdentNode: (id: NodeId) => void;
+    indentNodes: (ids: NodeId[]) => void; // Batch action
+    outdentNodes: (ids: NodeId[]) => void; // Batch action
     moveFocus: (direction: 'up' | 'down', select?: boolean) => void;
     moveNode: (id: NodeId, direction: 'up' | 'down') => void;
     setHoistedNode: (id: NodeId | null) => void;
