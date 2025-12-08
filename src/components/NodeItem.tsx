@@ -114,6 +114,107 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
             } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault();
                 expandSelection(id);
+            } else if ((e.ctrlKey || e.metaKey)) {
+                // Copy / Cut / Paste Handlers for Node Mode
+                if (e.key === 'c') {
+                    e.preventDefault();
+                    const state = useOutlinerStore.getState();
+                    const targets = state.selectedIds.length > 0 ? state.selectedIds : [id];
+                    import('../utils/clipboard').then(({ serializeNodesToClipboard }) => {
+                        const { text, json } = serializeNodesToClipboard(targets, state.nodes);
+                        // Use Clipboard API
+                        // Create ClipboardItem for multi-mime type support
+                        const data = [new ClipboardItem({
+                            'text/plain': new Blob([text], { type: 'text/plain' }),
+                            'application/json': new Blob([json], { type: 'application/json' })
+                        })];
+                        navigator.clipboard.write(data).catch(err => {
+                            // Fallback to text if JSON write fails (Safari sometimes strict)
+                            console.warn('Clipboard write failed (likely format issue), falling back to text', err);
+                            navigator.clipboard.writeText(text);
+                        });
+                    });
+                } else if (e.key === 'x') {
+                    e.preventDefault();
+                    const state = useOutlinerStore.getState();
+                    const targets = state.selectedIds.length > 0 ? state.selectedIds : [id];
+                    import('../utils/clipboard').then(({ serializeNodesToClipboard }) => {
+                        const { text, json } = serializeNodesToClipboard(targets, state.nodes);
+                        const data = [new ClipboardItem({
+                            'text/plain': new Blob([text], { type: 'text/plain' }),
+                            'application/json': new Blob([json], { type: 'application/json' })
+                        })];
+                        navigator.clipboard.write(data).then(() => {
+                            state.deleteNodes(targets);
+                        }).catch(err => {
+                            navigator.clipboard.writeText(text).then(() => {
+                                state.deleteNodes(targets);
+                            });
+                        });
+                    });
+                } else if (e.key === 'v') {
+                    e.preventDefault();
+                    navigator.clipboard.read().then(items => {
+                        for (const item of items) {
+                            if (item.types.includes('application/json')) {
+                                item.getType('application/json').then(blob => {
+                                    blob.text().then(json => {
+                                        import('../utils/clipboard').then(() => {
+                                            try {
+                                                const parsed = JSON.parse(json);
+                                                if (parsed.format === 'outliner/nodes') {
+                                                    const state = useOutlinerStore.getState();
+                                                    const parent = state.nodes[node.parentId || ''];
+                                                    if (parent) {
+                                                        const index = parent.children.indexOf(id) + 1;
+                                                        pasteNodes(parent.id, index, parsed.nodes);
+                                                    }
+                                                }
+                                            } catch (e) {
+                                                console.error(e);
+                                            }
+                                        });
+                                    });
+                                });
+                                return; // Found json, stop
+                            }
+                        }
+                        // Fallback to text
+                        navigator.clipboard.readText().then(text => {
+                            if (text) {
+                                import('../utils/clipboard').then(({ parseIndentedText }) => {
+                                    const parsed = parseIndentedText(text);
+                                    if (parsed.length > 0) {
+                                        const state = useOutlinerStore.getState();
+                                        const parent = state.nodes[node.parentId || ''];
+                                        if (parent) {
+                                            const index = parent.children.indexOf(id) + 1;
+                                            pasteNodes(parent.id, index, parsed);
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    }).catch(err => {
+                        // Fallback for browsers prohibiting read() but allowing readText()
+                        console.warn('Clipboard read failed, trying readText', err);
+                        navigator.clipboard.readText().then(text => {
+                            if (text) {
+                                import('../utils/clipboard').then(({ parseIndentedText }) => {
+                                    const parsed = parseIndentedText(text);
+                                    if (parsed.length > 0) {
+                                        const state = useOutlinerStore.getState();
+                                        const parent = state.nodes[node.parentId || ''];
+                                        if (parent) {
+                                            const index = parent.children.indexOf(id) + 1;
+                                            pasteNodes(parent.id, index, parsed);
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    });
+                }
             }
         } else {
             // --- Edit Mode (Input) ---
@@ -146,100 +247,23 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
         }
     };
 
-    const handleCopy = (e: React.ClipboardEvent) => {
-        if (!isSelected) return; // Only handle in Node Mode
-        e.preventDefault();
-        e.stopPropagation();
-
-        const state = useOutlinerStore.getState();
-        // If multiple selected, copy all. If single, copy self (and children).
-        // If single node selected but not in selectedIds? (Shouldn't happen if isSelected is true)
-        const targets = state.selectedIds.length > 0 ? state.selectedIds : [id];
-
-        // Dynamic import to avoid circular dep issues during render if any (though utils are safe)
-        import('../utils/clipboard').then(({ serializeNodesToClipboard }) => {
-            const { text, json } = serializeNodesToClipboard(targets, state.nodes);
-            if (e.clipboardData) {
-                e.clipboardData.setData('text/plain', text);
-                e.clipboardData.setData('application/json', json); // For internal
-            }
-        });
-    };
-
-    const handleCut = (e: React.ClipboardEvent) => {
-        if (!isSelected) return;
-        handleCopy(e); // Copy first
-        // Then delete
-        // We need to wait for copy? handleCopy is sync (setData).
-        const state = useOutlinerStore.getState();
-        const targets = state.selectedIds.length > 0 ? state.selectedIds : [id];
-        state.deleteNodes(targets);
-    };
-
     const handlePaste = (e: React.ClipboardEvent) => {
-        // Should work in both modes? 
-        // If in Edit Mode (Input), standard paste puts text in input.
-        // Unless we intercept "multiline" or "structured" paste?
-        // User request: "Logical Copy/Paste".
-        // If I have structured nodes copied, and I paste in input...
-        // If I paste in Node Mode: Paste as siblings/children.
-        // If I paste in Edit Mode: Paste as text? Or smart paste?
-
-        if (isSelected) {
-            // Node Mode Paste: Paste as siblings after current? Or children?
-            // Standard: Paste as siblings after current focus.
+        // Edit Mode Paste (Input only)
+        // Intercept multiline text to perform smart paste of nodes
+        const text = e.clipboardData.getData('text');
+        if (text.includes('\n')) {
             e.preventDefault();
-            e.stopPropagation();
-
-            const json = e.clipboardData.getData('application/json');
-            const text = e.clipboardData.getData('text');
-
             import('../utils/clipboard').then(({ parseIndentedText }) => {
-                let nodesToPaste: any[] = [];
-
-                if (json) {
-                    try {
-                        const parsed = JSON.parse(json);
-                        if (parsed.format === 'outliner/nodes') {
-                            nodesToPaste = parsed.nodes;
-                        }
-                    } catch (err) {
-                        console.error('Failed to parse internal JSON', err);
-                    }
-                }
-
-                if (nodesToPaste.length === 0 && text) {
-                    // Fallback to text parsing
-                    nodesToPaste = parseIndentedText(text);
-                }
-
-                if (nodesToPaste.length > 0) {
+                const parsed = parseIndentedText(text);
+                if (parsed.length > 0) {
                     const state = useOutlinerStore.getState();
                     const parent = state.nodes[node.parentId || ''];
                     if (parent) {
-                        const index = parent.children.indexOf(id) + 1; // After current
-                        pasteNodes(parent.id, index, nodesToPaste);
+                        const index = parent.children.indexOf(id) + 1;
+                        pasteNodes(parent.id, index, parsed);
                     }
                 }
             });
-        } else {
-            // Edit Mode
-            const text = e.clipboardData.getData('text');
-            if (text.includes('\n')) {
-                e.preventDefault();
-                import('../utils/clipboard').then(({ parseIndentedText }) => {
-                    const parsed = parseIndentedText(text);
-                    // If complex structure, maybe paste as nodes?
-                    if (parsed.length > 0) {
-                        const state = useOutlinerStore.getState();
-                        const parent = state.nodes[node.parentId || ''];
-                        if (parent) {
-                            const index = parent.children.indexOf(id) + 1;
-                            pasteNodes(parent.id, index, parsed);
-                        }
-                    }
-                });
-            }
         }
     };
 
@@ -254,46 +278,33 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                 className="flex items-center group py-1 relative outline-none"
                 style={{ paddingLeft: `${level * 20}px` }}
                 onKeyDown={handleKeyDown}
-                onCopy={handleCopy}
-                onCut={handleCut}
-                onPaste={handlePaste}
             >
                 {/* Bullet / Toggle */}
                 <div className="w-6 h-6 flex items-center justify-center mr-1 cursor-pointer text-gray-400 hover:text-gray-600">
-                    {node.children.length > 0 ? (
-                        <button onClick={(e) => { e.stopPropagation(); toggleCollapse(id); }} className="p-0.5 hover:bg-gray-200 rounded">
-                            {node.isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-                        </button>
-                    ) : (
-                        <Circle size={6} fill="currentColor" className="text-gray-300 group-hover:text-gray-400" />
-                    )}
+                    <span onClick={(e) => { e.stopPropagation(); toggleCollapse(id); }}>
+                        {node.children.length > 0 && (
+                            !node.isCollapsed ? <ChevronDown size={14} /> : <ChevronRight size={14} />
+                        )}
+                        {node.children.length === 0 && <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />}
+                    </span>
                 </div>
 
                 {/* Content */}
-                <input
-                    ref={inputRef}
-                    value={node.content}
-                    onChange={(e) => {
-                        updateContent(id, e.target.value);
-                    }}
-                    onClick={(e) => {
-                        e.stopPropagation();
-
-                        if (e.shiftKey || e.metaKey || e.ctrlKey) {
-                            // Modifiers -> Selection Logic
-                            // If Shift+Click, we probably want range? 
-                            // MVP: Toggle selection or standard behavior
-                            // For now let's just allow browser default or handle selection later.
-                            // Logic: If modifier, let's keep Node Mode?
-                            // selectNode(id, ...);
-                        } else {
-                            // Simple Click -> Edit Mode
-                            // Deselect All to remove "Node Selection" (Blue BG)
+                <div className="flex-1 min-w-0">
+                    <input
+                        ref={inputRef}
+                        className={`w-full bg-transparent outline-none ${isSelected ? 'cursor-default caret-transparent' : ''}`}
+                        value={node.content}
+                        readOnly={isSelected}
+                        onChange={(e) => {
+                            if (isSelected) useOutlinerStore.getState().selectNode(id, false); // Clear selection on type
+                            updateContent(id, e.target.value);
+                        }}
+                        onClick={(e) => {
+                            e.stopPropagation();
                             useOutlinerStore.getState().deselectAll();
                             setFocus(id);
-                        }
-                    }}
-                    onFocus={() => {
+                            onFocus = {() => {
                         // If we got focus via Tab? 
                         if (!isSelected && focusedId !== id) setFocus(id);
                     }}
@@ -302,16 +313,16 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                     placeholder=""
                     readOnly={isSelected} // Optional: Explicitly readonly when selected (Node mode)
                 />
-            </div>
-
-            {/* Children */}
-            {!node.isCollapsed && node.children.length > 0 && (
-                <div className="flex flex-col">
-                    {node.children.map((childId) => (
-                        <NodeItem key={childId} id={childId} level={level + 1} />
-                    ))}
                 </div>
-            )}
-        </div>
-    );
+
+                {/* Children */}
+                {!node.isCollapsed && node.children.length > 0 && (
+                    <div className="flex flex-col">
+                        {node.children.map((childId) => (
+                            <NodeItem key={childId} id={childId} level={level + 1} />
+                        ))}
+                    </div>
+                )}
+            </div>
+            );
 };
