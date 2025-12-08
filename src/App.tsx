@@ -10,19 +10,31 @@ function App() {
   const addNode = useOutlinerStore((state) => state.addNode);
   const setHoistedNode = useOutlinerStore((state) => state.setHoistedNode);
 
+  const settings = useOutlinerStore((state) => state.settings);
+  const setSetting = useOutlinerStore((state) => state.setSetting);
+
   if (!rootNode) return <div className="p-10">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-white text-gray-900 p-10 max-w-4xl mx-auto">
       <header className="mb-8 border-b pb-4 flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Untitled Outliner</h1>
-        <button
-          onClick={() => addNode(rootNodeId)}
-          className="flex items-center gap-2 px-3 py-1.5 bg-black text-white rounded-md text-sm hover:opacity-80 transition"
-        >
-          <Plus size={16} />
-          New Item
-        </button>
+        <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-teal-400">
+          Own Outliner
+        </h1>
+        <div className="text-xs flex gap-2">
+          <button
+            className={`px-2 py-1 rounded border ${settings.splitBehavior === 'sibling' ? 'bg-blue-100 border-blue-300' : 'bg-white border-gray-200'}`}
+            onClick={() => setSetting('splitBehavior', 'sibling')}
+          >
+            Split: Sibling
+          </button>
+          <button
+            className={`px-2 py-1 rounded border ${settings.splitBehavior === 'child' ? 'bg-blue-100 border-blue-300' : 'bg-white border-gray-200'}`}
+            onClick={() => setSetting('splitBehavior', 'child')}
+          >
+            Split: Child
+          </button>
+        </div>
       </header>
 
       <main className="pl-2">
