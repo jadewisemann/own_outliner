@@ -24,6 +24,12 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
     const moveNode = useOutlinerStore((state) => state.moveNode);
     const setHoistedNode = useOutlinerStore((state) => state.setHoistedNode);
     const pasteNodes = useOutlinerStore((state) => state.pasteNodes);
+
+    // Selection
+    const selectedIds = useOutlinerStore((state) => state.selectedIds);
+    const expandSelection = useOutlinerStore((state) => state.expandSelection);
+    const isSelected = selectedIds.includes(id);
+
     const inputRef = React.useRef<HTMLInputElement>(null);
 
     React.useEffect(() => {
@@ -115,12 +121,12 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
             setHoistedNode(null);
         } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
             const input = e.currentTarget as HTMLInputElement;
+            // Standard: If text selected, do nothing (let browser expand to all text)
+            // But we want to intercept if ALREADY full.
             if (input.selectionStart === 0 && input.selectionEnd === input.value.length) {
-                // Text is fully selected, move to node selection
+                // Text is fully selected, trigger Smart Select
                 e.preventDefault();
-                // TODO: Implement node selection mode. For now just log or console.
-                console.log('Smart Select triggered');
-                // Future: setSelection([id])
+                expandSelection(id);
             }
         }
     };
@@ -168,13 +174,10 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
     };
 
     return (
-        <div className="flex flex-col select-none">
+        <div className={`flex flex-col select-none ${isSelected ? 'bg-blue-100 rounded' : ''}`}>
             {/* Node Row */}
             <div
-                className={clsx(
-                    "flex items-center group py-1",
-                    focusedId === id && "bg-gray-50"
-                )}
+                className="flex items-center group py-1 relative"
                 style={{ paddingLeft: `${level * 20}px` }}
             >
                 {/* Bullet / Toggle */}

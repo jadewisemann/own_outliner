@@ -34,9 +34,138 @@ export const useOutlinerStore = create<OutlinerState>()(
                 splitBehavior: 'auto', // default
             },
 
+            selectedIds: [],
+            selectionAnchorId: null,
+
             setSetting: (key, value) => set((state) => ({
                 settings: { ...state.settings, [key]: value }
             })),
+
+            selectNode: (id, multi = false) => set((state) => {
+                const newSelected = multi
+                    ? (state.selectedIds.includes(id)
+                        ? state.selectedIds.filter(i => i !== id)
+                        : [...state.selectedIds, id])
+                    : [id];
+                return {
+                    selectedIds: newSelected,
+                    selectionAnchorId: multi ? (state.selectionAnchorId || id) : id
+                };
+            }),
+
+            deselectAll: () => set({ selectedIds: [], selectionAnchorId: null }),
+
+            selectRange: (targetId) => {
+                const state = get();
+                const anchorId = state.selectionAnchorId || state.focusedId; // Fallback to focus if no anchor
+                if (!anchorId) return;
+
+                // Flatten visible nodes
+                const flattenVisibleNodes = (nodeId: NodeId, list: NodeId[]) => {
+                    list.push(nodeId);
+                    const node = state.nodes[nodeId];
+                    if (!node.isCollapsed && node.children.length > 0) {
+                        node.children.forEach(childId => flattenVisibleNodes(childId, list));
+                    }
+                };
+                const flatList: NodeId[] = [];
+                const root = state.nodes[state.rootNodeId];
+                root.children.forEach(childId => flattenVisibleNodes(childId, flatList));
+
+                const startIndex = flatList.indexOf(anchorId);
+                const endIndex = flatList.indexOf(targetId);
+
+                if (startIndex === -1 || endIndex === -1) return;
+
+                const start = Math.min(startIndex, endIndex);
+                const end = Math.max(startIndex, endIndex);
+
+                const range = flatList.slice(start, end + 1);
+                set({ selectedIds: range });
+            },
+
+            expandSelection: (currentId) => {
+                const state = get();
+                const node = state.nodes[currentId];
+                if (!node || !node.parentId) return;
+
+                // Helper: Get all descendants recursively
+                const getSubtreeIds = (rootId: NodeId): NodeId[] => {
+                    const result = [rootId];
+                    const n = state.nodes[rootId];
+                    if (n && n.children.length > 0) {
+                        n.children.forEach(c => {
+                            result.push(...getSubtreeIds(c));
+                        });
+                    }
+                    return result;
+                };
+
+                const selectedSet = new Set(state.selectedIds);
+
+                // Case 1: Select Node + Subtree (if not fully selected yet)
+                const subtreeIds = getSubtreeIds(currentId);
+                const isSubtreeSelected = subtreeIds.every(id => selectedSet.has(id));
+
+                if (!isSubtreeSelected) {
+                    set({ selectedIds: subtreeIds, selectionAnchorId: currentId });
+                    return;
+                }
+
+                // Case 2: Select Siblings (and their subtrees)
+                // Identify the "scope" of the current selection.
+                // If we selected a child, our scope is that child.
+                // If we selected siblings, our scope is the siblings list.
+                // We need to find the parent of the currently selected "block".
+                // If selection contains currentId, we look at currentId's parent.
+
+                const parent = state.nodes[node.parentId];
+                if (!parent) return;
+
+                const siblings = parent.children;
+                // Check if all siblings (and their subtrees) are selected
+                let allSiblingsSelected = true;
+                const allSiblingIds: NodeId[] = [];
+
+                siblings.forEach(sibId => {
+                    const sibSubtree = getSubtreeIds(sibId);
+                    allSiblingIds.push(...sibSubtree);
+                    if (!sibSubtree.every(id => selectedSet.has(id))) {
+                        allSiblingsSelected = false;
+                    }
+                });
+
+                if (!allSiblingsSelected) {
+                    set({ selectedIds: allSiblingIds });
+                    return;
+                }
+
+                // Case 3: Select Parent (and thus the whole block up to parent)
+                // If siblings are selected, next step is to select the Parent Node itself.
+                if (!selectedSet.has(parent.id)) {
+                    // Select Parent + All Sibling Subtrees (which are effectively Parent's subtree)
+                    // So we just add Parent ID to the list?
+                    // Or strictly set to [Parent, ...descendants]?
+                    // Usually selection order matters for range, but for "Select Parent", 
+                    // we essentially select the Parent Row + Children Rows.
+                    const parentSubtree = getSubtreeIds(parent.id);
+                    set({ selectedIds: parentSubtree, selectionAnchorId: parent.id });
+
+                    // Optimization: If we just selected Parent Subtree, 
+                    // Next Ctrl+A should effectively be called on Parent.
+                    // But the user focus is still on `currentId` (input).
+                    // So subsequent Ctrl+A will come here again with `currentId`.
+                    // We need to detect "Parent is already selected".
+                } else {
+                    // Parent is selected. 
+                    // Now replicate "Siblings" logic but for Parent.
+                    // Recursive step?
+                    // We can call expandSelection(parent.id)? 
+                    // But we can't easily call actions from within actions efficiently without loop.
+                    // Let's explicitly go up.
+                    get().expandSelection(parent.id);
+                }
+            },
 
             addNode: (parentId, index) => {
                 const id = generateId();

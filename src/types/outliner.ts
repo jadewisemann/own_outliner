@@ -34,4 +34,13 @@ export interface OutlinerState {
         splitBehavior: 'sibling' | 'child' | 'auto';
     };
     setSetting: (key: 'splitBehavior', value: 'sibling' | 'child' | 'auto') => void;
+
+    // Selection
+    selectedIds: NodeId[]; // Ordered list of selected IDs for easy range logic? Or Set? Array easier for ordering.
+    selectionAnchorId: NodeId | null; // The node where Shift-selection started
+
+    selectNode: (id: NodeId, multi?: boolean) => void;
+    deselectAll: () => void;
+    selectRange: (targetId: NodeId) => void; // Select from anchor to target
+    expandSelection: (currentId: NodeId) => void; // Smart Ctrl+A logic
 }
