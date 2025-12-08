@@ -514,78 +514,52 @@ export const useOutlinerStore = create<OutlinerState>()(
                     const parent = state.nodes[node.parentId];
                     const index = parent.children.indexOf(id);
 
-                    if (cursorPosition === 0) {
-                        // Enter at start: Always create empty node BEFORE current (Sibling)
-                        // Regardless of settings, this is "Insert Line Before"
-                        const newId = generateId();
-                        const newNode = createInitialNode(newId, '');
-                        newNode.parentId = parent.id;
+                    // Logic for Enter at start (cursorPosition === 0):
+                    // User Request: Create new line AFTER current node.
+                    // Implementation: Treat it identically to Enter at END (Create empty node after).
+                    // So, if cursor is 0, we FORCE left behavior to be "All Content" and right to be "Empty".
 
-                        const newChildren = [...parent.children];
-                        newChildren.splice(index, 0, newId);
+                    const isStart = cursorPosition === 0;
+                    const leftContent = isStart ? node.content : node.content.slice(0, cursorPosition);
+                    const rightContent = isStart ? '' : node.content.slice(cursorPosition);
 
-                        return {
-                            nodes: {
-                                ...state.nodes,
-                                [newId]: newNode,
-                                [parent.id]: { ...parent, children: newChildren }
-                            },
-                        };
-
-                    } else {
-                        // Split content
-                        const leftContent = cursorPosition === 0 ? node.content : node.content.slice(0, cursorPosition);
-                        const rightContent = cursorPosition === 0 ? '' : node.content.slice(cursorPosition);
-
-                        let behavior = state.settings.splitBehavior;
-
-                        // Resolve 'auto' behavior
-                        if (behavior === 'auto') {
-                            behavior = node.children.length > 0 ? 'child' : 'sibling';
-                        }
-
-                        // Special Handling for Cursor at 0 (User request: Don't create line in front)
-                        // If cursor is at 0, we treat it as "Create new node after current one" (like End of line).
-                        // Instead of splitting "" and "Content", we treat it as "Content" and "".
-                        // Logic: Left = Content, Right = "".
-                        // This matches exact behavior of cursor at end.
-
-                        const newId = generateId();
-                        // If cursor 0, right is empty. If cursor end, right is empty.
-                        // Logic holds.
-
-                        const newNode = createInitialNode(newId, rightContent);
-
-                        const nodes = { ...state.nodes };
-
-                        if (behavior === 'child') {
-                            // Behavior: Child
-                            newNode.parentId = id;
-                            const newCurrentChildren = [newId, ...node.children];
-
-                            nodes[id] = {
-                                ...node,
-                                content: leftContent,
-                                children: newCurrentChildren,
-                                isCollapsed: false
-                            };
-                            nodes[newId] = newNode;
-                        } else {
-                            // Behavior: Sibling (Default)
-                            newNode.parentId = parent.id;
-                            const newChildren = [...parent.children];
-                            newChildren.splice(index + 1, 0, newId); // Insert AFTER current
-
-                            nodes[id] = { ...node, content: leftContent };
-                            nodes[newId] = newNode;
-                            nodes[parent.id] = { ...parent, children: newChildren };
-                        }
-
-                        return {
-                            nodes,
-                            focusedId: newId
-                        };
+                    let behavior = state.settings.splitBehavior;
+                    if (behavior === 'auto') {
+                        behavior = node.children.length > 0 ? 'child' : 'sibling';
                     }
+
+                    const newId = generateId();
+                    const newNode = createInitialNode(newId, rightContent);
+
+                    const nodes = { ...state.nodes };
+
+                    if (behavior === 'child') {
+                        // Behavior: Child
+                        newNode.parentId = id;
+                        const newCurrentChildren = [newId, ...node.children];
+
+                        nodes[id] = {
+                            ...node,
+                            content: leftContent,
+                            children: newCurrentChildren,
+                            isCollapsed: false
+                        };
+                        nodes[newId] = newNode;
+                    } else {
+                        // Behavior: Sibling (Default)
+                        newNode.parentId = parent.id;
+                        const newChildren = [...parent.children];
+                        newChildren.splice(index + 1, 0, newId); // Insert AFTER current
+
+                        nodes[id] = { ...node, content: leftContent };
+                        nodes[newId] = newNode;
+                        nodes[parent.id] = { ...parent, children: newChildren };
+                    }
+
+                    return {
+                        nodes,
+                        focusedId: newId
+                    };
                 });
             },
 
