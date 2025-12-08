@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useOutlinerStore } from '../store/useOutlinerStore';
 import type { NodeId } from '../types/outliner';
-import { ChevronRight, ChevronDown, Circle } from 'lucide-react';
+import { ChevronRight, ChevronDown } from 'lucide-react';
 
 interface NodeItemProps {
     id: NodeId;
@@ -15,14 +15,12 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
     const setFocus = useOutlinerStore((state) => state.setFocus);
     const focusedId = useOutlinerStore((state) => state.focusedId);
     const deleteNode = useOutlinerStore((state) => state.deleteNode);
-    const indentNode = useOutlinerStore((state) => state.indentNode);
-    const splitNode = useOutlinerStore((state) => state.splitNode);
-    const mergeNode = useOutlinerStore((state) => state.mergeNode);
-    const outdentNode = useOutlinerStore((state) => state.outdentNode);
+    // indent/outdent/moveNode/setHoistedNode unused locally but good to have refs if needed
     const moveFocus = useOutlinerStore((state) => state.moveFocus);
     const moveNode = useOutlinerStore((state) => state.moveNode);
-    const setHoistedNode = useOutlinerStore((state) => state.setHoistedNode);
     const pasteNodes = useOutlinerStore((state) => state.pasteNodes);
+    const splitNode = useOutlinerStore((state) => state.splitNode);
+    const mergeNode = useOutlinerStore((state) => state.mergeNode);
 
     // Selection
     const selectedIds = useOutlinerStore((state) => state.selectedIds);
@@ -30,12 +28,11 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
     const isSelected = selectedIds.includes(id);
     const selectNode = useOutlinerStore((state) => state.selectNode);
 
-    const inputRef = React.useRef<HTMLInputElement>(null);
-    const containerRef = React.useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (focusedId === id) {
-            // Decide where to focus
             if (isSelected) {
                 if (document.activeElement !== containerRef.current && containerRef.current) {
                     containerRef.current.focus();
@@ -43,8 +40,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
             } else {
                 if (document.activeElement !== inputRef.current && inputRef.current) {
                     inputRef.current.focus();
-                    // Fix: Clear persistent text selection by moving cursor to end
-                    // This ensures that navigating back to a node doesn't restore old highlights
+                    // Clear persistent text selection
                     const len = inputRef.current.value.length;
                     inputRef.current.setSelectionRange(len, len);
                 }
@@ -52,8 +48,9 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
         }
     }, [focusedId, id, isSelected]);
 
+    if (!node) return null;
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        // Common navigation that overrides default behavior
         if (e.key === 'ArrowUp') {
             e.preventDefault();
             if (e.altKey) {
@@ -63,7 +60,6 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
             }
             return;
         }
-
         if (e.key === 'ArrowDown') {
             e.preventDefault();
             if (e.altKey) {
@@ -73,35 +69,21 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
             }
             return;
         }
-
         if (e.key === 'Tab') {
             e.preventDefault();
+            const state = useOutlinerStore.getState();
             if (e.shiftKey) {
-                outdentNode(id);
+                state.outdentNode(id);
             } else {
-                indentNode(id);
+                state.indentNode(id);
             }
             return;
         }
 
-        if (e.key === '.' && (e.ctrlKey || e.metaKey)) {
-            e.preventDefault();
-            setHoistedNode(id);
-            return;
-        }
-
-        if (e.key === ',' && (e.ctrlKey || e.metaKey)) {
-            e.preventDefault();
-            setHoistedNode(null);
-            return;
-        }
-
-        // Mode-specific handling
         if (isSelected) {
             // --- Node Mode ---
             if (e.key === 'Enter') {
                 e.preventDefault();
-                // Switch to Edit Mode (focus input, clear selection)
                 selectNode(id, false);
             } else if (e.key === 'Backspace' || e.key === 'Delete') {
                 e.preventDefault();
@@ -122,15 +104,12 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                     const targets = state.selectedIds.length > 0 ? state.selectedIds : [id];
                     import('../utils/clipboard').then(({ serializeNodesToClipboard }) => {
                         const { text, json } = serializeNodesToClipboard(targets, state.nodes);
-                        // Use Clipboard API
-                        // Create ClipboardItem for multi-mime type support
                         const data = [new ClipboardItem({
                             'text/plain': new Blob([text], { type: 'text/plain' }),
                             'application/json': new Blob([json], { type: 'application/json' })
                         })];
                         navigator.clipboard.write(data).catch(err => {
-                            // Fallback to text if JSON write fails (Safari sometimes strict)
-                            console.warn('Clipboard write failed (likely format issue), falling back to text', err);
+                            console.warn('Clipboard write failed', err);
                             navigator.clipboard.writeText(text);
                         });
                     });
@@ -146,7 +125,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                         })];
                         navigator.clipboard.write(data).then(() => {
                             state.deleteNodes(targets);
-                        }).catch(err => {
+                        }).catch(() => {
                             navigator.clipboard.writeText(text).then(() => {
                                 state.deleteNodes(targets);
                             });
@@ -176,10 +155,9 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                                         });
                                     });
                                 });
-                                return; // Found json, stop
+                                return;
                             }
                         }
-                        // Fallback to text
                         navigator.clipboard.readText().then(text => {
                             if (text) {
                                 import('../utils/clipboard').then(({ parseIndentedText }) => {
@@ -196,7 +174,6 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                             }
                         });
                     }).catch(err => {
-                        // Fallback for browsers prohibiting read() but allowing readText()
                         console.warn('Clipboard read failed, trying readText', err);
                         navigator.clipboard.readText().then(text => {
                             if (text) {
@@ -220,17 +197,16 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
             // --- Edit Mode (Input) ---
             if (e.key === 'Escape') {
                 e.preventDefault();
-                // Switch to Node Mode
                 selectNode(id);
             } else if (e.key === 'Enter') {
                 e.preventDefault();
-                const input = e.currentTarget as HTMLInputElement; // Use currentTarget for event listener element
+                const input = e.currentTarget as HTMLInputElement;
                 const cursorPos = input.selectionStart || 0;
                 splitNode(id, cursorPos);
             } else if (e.key === 'Backspace') {
                 const input = e.currentTarget as HTMLInputElement;
                 if (input.selectionStart === 0 && input.selectionEnd === 0) {
-                    e.preventDefault(); // Only prevent if at start
+                    e.preventDefault();
                     if (node.content.length === 0) {
                         deleteNode(id);
                     } else {
@@ -249,7 +225,6 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
 
     const handlePaste = (e: React.ClipboardEvent) => {
         // Edit Mode Paste (Input only)
-        // Intercept multiline text to perform smart paste of nodes
         const text = e.clipboardData.getData('text');
         if (text.includes('\n')) {
             e.preventDefault();
@@ -268,9 +243,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
     };
 
     return (
-        <div
-            className={`flex flex-col select-none ${isSelected ? 'bg-blue-100 rounded' : ''}`}
-        >
+        <div className={`flex flex-col select-none ${isSelected ? 'bg-blue-100 rounded' : ''}`}>
             {/* Node Row */}
             <div
                 ref={containerRef}
@@ -297,32 +270,30 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                         value={node.content}
                         readOnly={isSelected}
                         onChange={(e) => {
-                            if (isSelected) useOutlinerStore.getState().selectNode(id, false); // Clear selection on type
+                            if (isSelected) useOutlinerStore.getState().selectNode(id, false);
                             updateContent(id, e.target.value);
                         }}
                         onClick={(e) => {
                             e.stopPropagation();
                             useOutlinerStore.getState().deselectAll();
                             setFocus(id);
-                            onFocus = {() => {
-                        // If we got focus via Tab? 
-                        if (!isSelected && focusedId !== id) setFocus(id);
-                    }}
-                    onPaste={handlePaste}
-                    className="flex-1 min-w-0 bg-transparent outline-none ml-2 text-gray-800 font-sans"
-                    placeholder=""
-                    readOnly={isSelected} // Optional: Explicitly readonly when selected (Node mode)
-                />
+                        }}
+                        onFocus={() => {
+                            if (!isSelected && focusedId !== id) setFocus(id);
+                        }}
+                        onPaste={handlePaste}
+                    />
                 </div>
-
-                {/* Children */}
-                {!node.isCollapsed && node.children.length > 0 && (
-                    <div className="flex flex-col">
-                        {node.children.map((childId) => (
-                            <NodeItem key={childId} id={childId} level={level + 1} />
-                        ))}
-                    </div>
-                )}
             </div>
-            );
+
+            {/* Children */}
+            {!node.isCollapsed && node.children.length > 0 && (
+                <div className="flex flex-col">
+                    {node.children.map((childId) => (
+                        <NodeItem key={childId} id={childId} level={level + 1} />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
 };
