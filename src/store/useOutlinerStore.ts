@@ -84,6 +84,89 @@ export const useOutlinerStore = create<OutlinerState>()(
                 set({ selectedIds: range });
             },
 
+            moveFocus: (direction, select = false) => {
+                const state = get();
+                // ... logic to find next node
+                // We need to flatten visible nodes to find next/prev
+                if (!state.focusedId && !state.rootNodeId) return;
+
+                const flattenVisibleNodes = (nodeId: NodeId, list: NodeId[]) => {
+                    const node = state.nodes[nodeId];
+                    // We include root? No, typical traversal is children.
+                    // But we need to traverse from root.
+                    if (nodeId !== state.rootNodeId) list.push(nodeId);
+
+                    if (!node.isCollapsed && node.children.length > 0) {
+                        node.children.forEach(childId => flattenVisibleNodes(childId, list));
+                    }
+                };
+
+                const flatList: NodeId[] = [];
+                const root = state.nodes[state.rootNodeId]; // activeRootId handled by caller? 
+                // Store uses `hoistedNodeId`?
+                // `moveFocus` should respect hoisting.
+                const effectiveRootId = state.hoistedNodeId || state.rootNodeId;
+                const effectiveRoot = state.nodes[effectiveRootId];
+
+                if (effectiveRoot) {
+                    effectiveRoot.children.forEach(childId => flattenVisibleNodes(childId, flatList));
+                }
+
+                // If focusedId is null, focus first?
+                let currentIndex = -1;
+                if (state.focusedId) {
+                    currentIndex = flatList.indexOf(state.focusedId);
+                }
+
+                if (currentIndex === -1 && flatList.length > 0) {
+                    set({ focusedId: flatList[0] });
+                    return;
+                }
+
+                let nextIndex = currentIndex;
+                if (direction === 'up') {
+                    nextIndex = currentIndex - 1;
+                } else {
+                    nextIndex = currentIndex + 1;
+                }
+
+                if (nextIndex >= 0 && nextIndex < flatList.length) {
+                    const nextId = flatList[nextIndex];
+
+                    // Selection Logic
+                    if (select) {
+                        const anchor = state.selectionAnchorId || state.focusedId; // Anchor at OLD focus if null
+
+                        // We set focus first? No, we need state update.
+                        // But we want to call selectRange(nextId) with anchor anchored at old.
+                        // If anchor was null, Set anchor to OLD focus.
+
+                        const updates: Partial<OutlinerState> = { focusedId: nextId };
+                        if (!state.selectionAnchorId) {
+                            updates.selectionAnchorId = state.focusedId;
+                        }
+
+                        // We need to trigger selectRange logic.
+                        // Can't call get().selectRange inside set?
+                        // We can calculate range here.
+
+                        const anchorId = state.selectionAnchorId || state.focusedId;
+                        if (anchorId) {
+                            const startIndex = flatList.indexOf(anchorId);
+                            const endIndex = nextIndex;
+                            const start = Math.min(startIndex, endIndex);
+                            const end = Math.max(startIndex, endIndex);
+                            updates.selectedIds = flatList.slice(start, end + 1);
+                        }
+
+                        set(updates);
+                    } else {
+                        // Clear selection if moving without shift
+                        set({ focusedId: nextId, selectedIds: [], selectionAnchorId: null });
+                    }
+                }
+            },
+
             expandSelection: (currentId) => {
                 const state = get();
                 const node = state.nodes[currentId];

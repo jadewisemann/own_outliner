@@ -21,7 +21,7 @@ export interface OutlinerState {
     toggleCollapse: (id: NodeId) => void;
     indentNode: (id: NodeId) => void; // Placeholder for Phase 3
     outdentNode: (id: NodeId) => void; // Placeholder for Phase 3
-    moveFocus: (direction: 'up' | 'down') => void;
+    moveFocus: (direction: 'up' | 'down', select?: boolean) => void;
     moveNode: (id: NodeId, direction: 'up' | 'down') => void;
     setHoistedNode: (id: NodeId | null) => void;
     // Complex action
