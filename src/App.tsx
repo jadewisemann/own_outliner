@@ -1,11 +1,47 @@
-import { OutlineNode } from "./component"
+import { useOutlinerStore } from './store/useOutlinerStore';
+import { NodeItem } from './components/NodeItem';
+import { Plus } from 'lucide-react';
 
-const App = () => (
-  <>
-    <h1 className="">
-      hello, world
-    </h1>
-  </>
-);
+function App() {
+  const rootNodeId = useOutlinerStore((state) => state.rootNodeId);
+  const rootNode = useOutlinerStore((state) => state.nodes[rootNodeId]);
+  const addNode = useOutlinerStore((state) => state.addNode);
+
+  if (!rootNode) return <div className="p-10">Loading...</div>;
+
+  return (
+    <div className="min-h-screen bg-white text-gray-900 p-10 max-w-4xl mx-auto">
+      <header className="mb-8 border-b pb-4 flex justify-between items-center">
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Untitled Outliner</h1>
+        <button
+          onClick={() => addNode(rootNodeId)}
+          className="flex items-center gap-2 px-3 py-1.5 bg-black text-white rounded-md text-sm hover:opacity-80 transition"
+        >
+          <Plus size={16} />
+          New Item
+        </button>
+      </header>
+
+      <main className="pl-2">
+        {rootNode.children.length === 0 ? (
+          <div
+            className="text-gray-400 italic cursor-pointer hover:bg-gray-50 p-2 rounded"
+            onClick={() => addNode(rootNodeId)}
+          >
+            Click to start typing...
+          </div>
+        ) : (
+          rootNode.children.map((childId) => (
+            <NodeItem key={childId} id={childId} level={0} />
+          ))
+        )}
+      </main>
+
+      <div className="fixed bottom-4 right-4 text-xs text-gray-400">
+        Local-First Outliner Prototype
+      </div>
+    </div>
+  );
+}
 
 export default App;
