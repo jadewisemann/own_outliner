@@ -312,7 +312,8 @@ export const useOutlinerStore = create<OutlinerState>()(
                     const index = parent.children.indexOf(id);
 
                     if (cursorPosition === 0) {
-                        // Enter at start: Create empty node BEFORE current
+                        // Enter at start: Always create empty node BEFORE current (Sibling)
+                        // Regardless of settings, this is "Insert Line Before"
                         const newId = generateId();
                         const newNode = createInitialNode(newId, '');
                         newNode.parentId = parent.id;
@@ -326,31 +327,51 @@ export const useOutlinerStore = create<OutlinerState>()(
                                 [newId]: newNode,
                                 [parent.id]: { ...parent, children: newChildren }
                             },
-                            // Focus stays on current node (which is now pushed down)
-                            // So we don't change focusedId
                         };
                     } else {
                         // Split content
                         const leftContent = node.content.slice(0, cursorPosition);
                         const rightContent = node.content.slice(cursorPosition);
+                        const behavior = state.settings.splitBehavior;
 
                         const newId = generateId();
-                        // New node gets the right half
                         const newNode = createInitialNode(newId, rightContent);
-                        newNode.parentId = parent.id;
 
-                        const newChildren = [...parent.children];
-                        // Insert AFTER current
-                        newChildren.splice(index + 1, 0, newId);
+                        const nodes = { ...state.nodes };
+
+                        if (behavior === 'child') {
+                            // Behavior: Child
+                            // Current node becomes parent of new node.
+                            // New node is inserted as FIRST child (to maintain reading flow: Top -> Bottom)
+                            newNode.parentId = id;
+
+                            const newCurrentChildren = [newId, ...node.children];
+
+                            nodes[id] = {
+                                ...node,
+                                content: leftContent,
+                                children: newCurrentChildren,
+                                isCollapsed: false // Auto expand to show new child
+                            };
+                            nodes[newId] = newNode;
+
+                            // Parent (grandparent) is untouched in structure (except reference update if immutability needed? No, flat state)
+                            // But we modified nodes[id] which is enough.
+                        } else {
+                            // Behavior: Sibling (Default)
+                            newNode.parentId = parent.id;
+
+                            const newChildren = [...parent.children];
+                            newChildren.splice(index + 1, 0, newId); // Insert AFTER current
+
+                            nodes[id] = { ...node, content: leftContent };
+                            nodes[newId] = newNode;
+                            nodes[parent.id] = { ...parent, children: newChildren };
+                        }
 
                         return {
-                            nodes: {
-                                ...state.nodes,
-                                [id]: { ...node, content: leftContent },
-                                [newId]: newNode,
-                                [parent.id]: { ...parent, children: newChildren }
-                            },
-                            focusedId: newId // Focus moves to new node (right part)
+                            nodes,
+                            focusedId: newId
                         };
                     }
                 });
