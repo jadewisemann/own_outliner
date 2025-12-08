@@ -43,6 +43,10 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
             } else {
                 if (document.activeElement !== inputRef.current && inputRef.current) {
                     inputRef.current.focus();
+                    // Fix: Clear persistent text selection by moving cursor to end
+                    // This ensures that navigating back to a node doesn't restore old highlights
+                    const len = inputRef.current.value.length;
+                    inputRef.current.setSelectionRange(len, len);
                 }
             }
         }
