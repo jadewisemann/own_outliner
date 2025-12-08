@@ -1,9 +1,11 @@
-import { useState } from 'react';
-import { Virtuoso } from 'react-virtuoso';
+import { useState, useEffect, useRef } from 'react';
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { useOutlinerStore } from './store/useOutlinerStore';
 import { NodeItem } from './components/NodeItem';
 import { SettingsModal } from './components/SettingsModal';
+import { SearchModal } from './components/SearchModal';
 import { useVisibleNodes } from './hooks/useVisibleNodes';
+import { isMatch } from './utils/keybindings';
 
 function App() {
   const rootNodeId = useOutlinerStore((state) => state.rootNodeId);
@@ -12,10 +14,47 @@ function App() {
   const rootNode = useOutlinerStore((state) => state.nodes[activeRootId]);
   const addNode = useOutlinerStore((state) => state.addNode);
   const setHoistedNode = useOutlinerStore((state) => state.setHoistedNode);
+  const settings = useOutlinerStore((state) => state.settings);
+  const focusedId = useOutlinerStore((state) => state.focusedId);
 
   const flatNodes = useVisibleNodes();
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Scroll to focused node if needed
+  useEffect(() => {
+    if (focusedId && flatNodes.length > 0) {
+      const index = flatNodes.findIndex(n => n.id === focusedId);
+      if (index !== -1) {
+        // Use setTimeout to ensure render cycle complete?
+        // Virtuoso handles this well usually.
+        virtuosoRef.current?.scrollIntoView({
+          index,
+          behavior: 'auto',
+          done: () => {
+            // Optional: Focus logic is handled in NodeItem handles this, but we can ensure it here?
+            // NodeItem does it.
+          }
+        });
+      }
+    }
+  }, [focusedId, flatNodes]); // flatNodes dependency ensures we scroll after expansion updates list
+
+  // Global Keybindings
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Search
+      if (isMatch(e, settings.keybindings.search)) {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [settings.keybindings]);
 
   if (!rootNode) return <div className="p-10">Loading...</div>;
 
@@ -26,7 +65,13 @@ function App() {
           Own Outliner
         </h1>
         <div className="flex gap-2">
-          {/* ... buttons ... */}
+          <button
+            className="px-3 py-1.5 rounded text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors flex items-center gap-2"
+            onClick={() => setIsSearchOpen(true)}
+            title="Search (Cmd+P)"
+          >
+            🔍 Search
+          </button>
           <button
             className="px-3 py-1.5 rounded text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
             onClick={() => setIsSettingsOpen(true)}
@@ -54,6 +99,7 @@ function App() {
           </div>
         ) : (
           <Virtuoso
+            ref={virtuosoRef}
             useWindowScroll
             data={flatNodes}
             itemContent={(_, node) => (
@@ -68,6 +114,7 @@ function App() {
       </div>
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </div>
   );
 }

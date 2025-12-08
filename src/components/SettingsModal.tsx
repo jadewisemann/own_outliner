@@ -29,6 +29,7 @@ const ACTION_LABELS: Record<KeyAction, string> = {
     formatStrike: 'Format Strikethrough (Cmd+Shift+X)',
     undo: 'Undo (Cmd+Z)',
     redo: 'Redo (Cmd+Shift+Z)',
+    search: 'Search (Cmd+P)',
 };
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {

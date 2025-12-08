@@ -40,4 +40,5 @@ export const defaultKeybindings: Record<string, Keybinding> = {
     formatStrike: { key: 'x', meta: true, shift: true },
     undo: { key: 'z', meta: true },
     redo: { key: 'z', meta: true, shift: true },
+    search: { key: 'p', meta: true },
 };

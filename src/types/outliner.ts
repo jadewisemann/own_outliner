@@ -38,7 +38,8 @@ export type KeyAction =
     | 'formatItalic'
     | 'formatStrike'
     | 'undo'
-    | 'redo';
+    | 'redo'
+    | 'search';
 
 export interface OutlinerSettings {
     splitBehavior: 'sibling' | 'child' | 'auto';
