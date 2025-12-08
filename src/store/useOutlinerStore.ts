@@ -28,6 +28,7 @@ export const useOutlinerStore = create<OutlinerState>()(
             },
             rootNodeId: INITIAL_ROOT_ID,
             focusedId: null,
+            focusCursorPos: null,
             hoistedNodeId: null,
 
             settings: {
@@ -408,7 +409,7 @@ export const useOutlinerStore = create<OutlinerState>()(
                 }));
             },
 
-            setFocus: (id) => set({ focusedId: id }),
+            setFocus: (id, cursorPos = null) => set({ focusedId: id, focusCursorPos: cursorPos }),
 
             toggleCollapse: (id) => {
                 set((state) => ({

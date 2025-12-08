@@ -13,11 +13,12 @@ export interface OutlinerState {
     rootNodeId: NodeId;
     focusedId: NodeId | null;
     hoistedNodeId: NodeId | null; // The node currently being viewed as root
+    focusCursorPos: number | null; // Optional: specific cursor position on focus
     // Actions
     addNode: (parentId: NodeId | null, index?: number) => void;
     deleteNode: (id: NodeId) => void;
     updateContent: (id: NodeId, content: string) => void;
-    setFocus: (id: NodeId | null) => void;
+    setFocus: (id: NodeId | null, cursorPos?: number | null) => void;
     toggleCollapse: (id: NodeId) => void;
     indentNode: (id: NodeId) => void; // Placeholder for Phase 3
     outdentNode: (id: NodeId) => void; // Placeholder for Phase 3

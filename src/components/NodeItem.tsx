@@ -14,6 +14,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
     const toggleCollapse = useOutlinerStore((state) => state.toggleCollapse);
     const setFocus = useOutlinerStore((state) => state.setFocus);
     const focusedId = useOutlinerStore((state) => state.focusedId);
+    const focusCursorPos = useOutlinerStore((state) => state.focusCursorPos);
     const deleteNode = useOutlinerStore((state) => state.deleteNode);
     // indent/outdent/moveNode/setHoistedNode unused locally but good to have refs if needed
     const moveFocus = useOutlinerStore((state) => state.moveFocus);
@@ -27,6 +28,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
     const expandSelection = useOutlinerStore((state) => state.expandSelection);
     const isSelected = selectedIds.includes(id);
     const selectNode = useOutlinerStore((state) => state.selectNode);
+    const deselectAll = useOutlinerStore((state) => state.deselectAll);
 
     const inputRef = useRef<HTMLInputElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -40,13 +42,24 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
             } else {
                 if (document.activeElement !== inputRef.current && inputRef.current) {
                     inputRef.current.focus();
-                    // Clear persistent text selection
+
+                    // Handle cursor positioning based on store intent or default to end
                     const len = inputRef.current.value.length;
-                    inputRef.current.setSelectionRange(len, len);
+                    let newPos = len; // Default to end
+
+                    if (focusCursorPos !== null) {
+                        newPos = focusCursorPos;
+                    }
+
+                    // Safety check
+                    if (newPos < 0) newPos = 0;
+                    if (newPos > len) newPos = len;
+
+                    inputRef.current.setSelectionRange(newPos, newPos);
                 }
             }
         }
-    }, [focusedId, id, isSelected]);
+    }, [focusedId, id, isSelected, focusCursorPos]);
 
     if (!node) return null;
 
@@ -192,6 +205,16 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                         });
                     });
                 }
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                // Move to Edit Mode at Start
+                deselectAll();
+                setFocus(id, 0);
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                // Move to Edit Mode at End
+                deselectAll();
+                setFocus(id, node.content.length);
             }
         } else {
             // --- Edit Mode (Input) ---
@@ -212,6 +235,11 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                     } else {
                         mergeNode(id);
                     }
+                }
+            } else if (e.key === 'Delete') {
+                if (node.content.length === 0) {
+                    e.preventDefault();
+                    deleteNode(id);
                 }
             } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
                 const input = e.target as HTMLInputElement;
