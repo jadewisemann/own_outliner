@@ -56,3 +56,48 @@ export const parseIndentedText = (text: string): TempNode[] => {
 
     return root.children;
 };
+
+// Structure for internal clipboard data
+export interface ClipboardData {
+    format: 'outliner/nodes';
+    nodes: TempNode[]; // Reusing TempNode for recursive structure
+}
+
+export const serializeNodesToClipboard = (
+    ids: string[],
+    nodes: Record<string, { content: string, children: string[] }>
+): { text: string, json: string } => {
+    // 1. Convert selected nodes to recursive structure
+    const toTempNode = (id: string): TempNode | null => {
+        const node = nodes[id];
+        if (!node) return null;
+        return {
+            content: node.content,
+            children: node.children
+                .map(toTempNode)
+                .filter((n): n is TempNode => n !== null)
+        };
+    };
+
+    const forest = ids.map(toTempNode).filter((n): n is TempNode => n !== null);
+
+    // 2. Generate Text (Indented)
+    const structureToText = (nodes: TempNode[], depth = 0): string => {
+        return nodes.map(node => {
+            const indent = '\t'.repeat(depth);
+            const selfText = `${indent}- ${node.content}\n`;
+            const childrenText = structureToText(node.children, depth + 1);
+            return selfText + childrenText;
+        }).join('');
+    };
+
+    const text = structureToText(forest);
+
+    // 3. Generate JSON
+    const json = JSON.stringify({
+        format: 'outliner/nodes',
+        nodes: forest
+    });
+
+    return { text, json };
+};
