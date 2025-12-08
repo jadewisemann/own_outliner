@@ -1,6 +1,5 @@
 import { useOutlinerStore } from './store/useOutlinerStore';
 import { NodeItem } from './components/NodeItem';
-import { Plus } from 'lucide-react';
 
 function App() {
   const rootNodeId = useOutlinerStore((state) => state.rootNodeId);
@@ -23,16 +22,22 @@ function App() {
         </h1>
         <div className="text-xs flex gap-2">
           <button
+            className={`px-2 py-1 rounded border ${settings.splitBehavior === 'auto' ? 'bg-blue-100 border-blue-300' : 'bg-white border-gray-200'}`}
+            onClick={() => setSetting('splitBehavior', 'auto')}
+          >
+            Split: Auto
+          </button>
+          <button
             className={`px-2 py-1 rounded border ${settings.splitBehavior === 'sibling' ? 'bg-blue-100 border-blue-300' : 'bg-white border-gray-200'}`}
             onClick={() => setSetting('splitBehavior', 'sibling')}
           >
-            Split: Sibling
+            Sibling
           </button>
           <button
             className={`px-2 py-1 rounded border ${settings.splitBehavior === 'child' ? 'bg-blue-100 border-blue-300' : 'bg-white border-gray-200'}`}
             onClick={() => setSetting('splitBehavior', 'child')}
           >
-            Split: Child
+            Child
           </button>
         </div>
       </header>

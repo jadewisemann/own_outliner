@@ -328,12 +328,13 @@ export const useOutlinerStore = create<OutlinerState>()(
                                 [parent.id]: { ...parent, children: newChildren }
                             },
                         };
+
                     } else {
                         // Split content
                         const leftContent = node.content.slice(0, cursorPosition);
                         const rightContent = node.content.slice(cursorPosition);
                         let behavior = state.settings.splitBehavior;
-                        
+
                         // Resolve 'auto' behavior
                         if (behavior === 'auto') {
                             behavior = node.children.length > 0 ? 'child' : 'sibling';
