@@ -33,7 +33,10 @@ export type KeyAction =
     | 'selectLine' // Ctrl+L behavior
     | 'toggleCollapse'
     | 'zoomIn'
-    | 'zoomOut';
+    | 'zoomOut'
+    | 'formatBold'
+    | 'formatItalic'
+    | 'formatStrike';
 
 export interface OutlinerSettings {
     splitBehavior: 'sibling' | 'child' | 'auto';

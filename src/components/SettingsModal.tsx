@@ -24,6 +24,9 @@ const ACTION_LABELS: Record<KeyAction, string> = {
     toggleCollapse: 'Toggle Collapse (Cmd+Enter)',
     zoomIn: 'Zoom In (Cmd + .)',
     zoomOut: 'Zoom Out (Cmd + ,)',
+    formatBold: 'Format Bold (Cmd+B)',
+    formatItalic: 'Format Italic (Cmd+I)',
+    formatStrike: 'Format Strikethrough (Cmd+Shift+X)',
 };
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {

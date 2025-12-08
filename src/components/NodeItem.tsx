@@ -361,6 +361,63 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                 }
                 return;
             }
+
+            // --- Formatting Shortcuts ---
+            const applyFormat = (marker: string) => {
+                if (!inputRef.current) return;
+                e.preventDefault();
+
+                const input = inputRef.current;
+                const start = input.selectionStart || 0;
+                const end = input.selectionEnd || 0;
+                const value = input.value;
+
+                // If no selection, maybe apply to current word? Or just insert markers?
+                // For simplicity MVP: Insert markers around cursor or wrap selection.
+
+                let textToWrap = value.slice(start, end);
+                let before = value.slice(0, start);
+                let after = value.slice(end);
+
+                // Check if already wrapped
+                // This is a naive check. A robust lexer is complex.
+                // We check if 'before' ends with marker and 'after' starts with marker.
+                if (before.endsWith(marker) && after.startsWith(marker)) {
+                    // Unwrap
+                    const newContent = before.slice(0, -marker.length) + textToWrap + after.slice(marker.length);
+                    updateContent(id, newContent);
+                    // Restore selection
+                    setTimeout(() => {
+                        if (inputRef.current) {
+                            inputRef.current.setSelectionRange(start - marker.length, end - marker.length);
+                        }
+                    }, 0);
+                } else {
+                    // Wrap
+                    const newContent = before + marker + textToWrap + marker + after;
+                    updateContent(id, newContent);
+                    // Restore selection (include markers? usually select inside)
+                    setTimeout(() => {
+                        if (inputRef.current) {
+                            // Keep selection on the text inside formatted markers
+                            inputRef.current.setSelectionRange(start + marker.length, end + marker.length);
+                        }
+                    }, 0);
+                }
+            };
+
+            if (isMatch(e, keys.formatBold)) {
+                applyFormat('**');
+                return;
+            }
+            if (isMatch(e, keys.formatItalic)) {
+                applyFormat('*');
+                return;
+            }
+            if (isMatch(e, keys.formatStrike)) {
+                applyFormat('~~');
+                return;
+            }
         }
     };
 
@@ -453,7 +510,12 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                                     remarkPlugins={[remarkGfm]}
                                     components={{
                                         p: ({ node, ...props }) => <p className="m-0" {...props} />, // Remove default paragraph margins
-                                        a: ({ node, ...props }) => <a className="text-blue-500 hover:underline pointer-events-auto" onClick={e => e.stopPropagation()} target="_blank" rel="noopener noreferrer" {...props} />
+                                        a: ({ node, ...props }) => <a className="text-blue-500 hover:underline pointer-events-auto" onClick={e => e.stopPropagation()} target="_blank" rel="noopener noreferrer" {...props} />,
+                                        h1: ({ node, ...props }) => <h1 className="text-xl font-bold mt-2 mb-1 text-gray-900" {...props} />,
+                                        h2: ({ node, ...props }) => <h2 className="text-lg font-bold mt-2 mb-1 text-gray-800" {...props} />,
+                                        h3: ({ node, ...props }) => <h3 className="text-base font-bold mt-1 mb-1 text-gray-800" {...props} />,
+                                        blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-gray-300 pl-2 text-gray-500 italic my-1" {...props} />,
+                                        code: ({ node, ...props }) => <code className="bg-gray-100 px-1 rounded text-sm font-mono text-red-500" {...props} />,
                                     }}
                                 >
                                     {node.content}
