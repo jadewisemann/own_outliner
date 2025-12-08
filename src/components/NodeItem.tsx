@@ -132,8 +132,8 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                     }
                 }
             } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
-                const input = e.currentTarget as HTMLInputElement;
-                if (input.selectionStart === 0 && input.selectionEnd === input.value.length) {
+                const input = e.target as HTMLInputElement;
+                if (input instanceof HTMLInputElement && input.selectionStart === 0 && input.selectionEnd === input.value.length) {
                     e.preventDefault();
                     expandSelection(id);
                 }
