@@ -314,13 +314,26 @@ export const useOutlinerStore = create<OutlinerState>()(
                     const index = parent.children.indexOf(id);
 
                     // Determine next focus target
-                    let nextFocusId = parent.id;
+                    let nextFocusId: NodeId | null = parent.id;
+
                     if (index > 0) {
                         // Focus previous sibling
-                        // Ideally we should focus the LAST visible descendant of the previous sibling
-                        // But for now, focusing the sibling itself is a good MVP.
-                        // Actually, standard behavior is End of Previous Sibling content.
                         nextFocusId = parent.children[index - 1];
+                    } else {
+                        // We are deleting the first child
+                        if (node.parentId === state.rootNodeId) {
+                            // If it's a root item, we don't want to focus the invisible root parent.
+                            // We should focus the NEXT sibling if available.
+                            if (parent.children.length > 1) {
+                                nextFocusId = parent.children[index + 1];
+                            } else {
+                                // No nodes left?
+                                nextFocusId = null;
+                            }
+                        } else {
+                            // Standard behavior: focus parent
+                            nextFocusId = parent.id;
+                        }
                     }
 
                     // Recursive delete helper
