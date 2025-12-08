@@ -31,7 +31,7 @@ export const useOutlinerStore = create<OutlinerState>()(
             hoistedNodeId: null,
 
             settings: {
-                splitBehavior: 'sibling', // default
+                splitBehavior: 'auto', // default
             },
 
             setSetting: (key, value) => set((state) => ({
@@ -332,7 +332,12 @@ export const useOutlinerStore = create<OutlinerState>()(
                         // Split content
                         const leftContent = node.content.slice(0, cursorPosition);
                         const rightContent = node.content.slice(cursorPosition);
-                        const behavior = state.settings.splitBehavior;
+                        let behavior = state.settings.splitBehavior;
+                        
+                        // Resolve 'auto' behavior
+                        if (behavior === 'auto') {
+                            behavior = node.children.length > 0 ? 'child' : 'sibling';
+                        }
 
                         const newId = generateId();
                         const newNode = createInitialNode(newId, rightContent);

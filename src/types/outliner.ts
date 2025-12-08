@@ -31,7 +31,7 @@ export interface OutlinerState {
 
     // Settings
     settings: {
-        splitBehavior: 'sibling' | 'child';
+        splitBehavior: 'sibling' | 'child' | 'auto';
     };
-    setSetting: (key: 'splitBehavior', value: 'sibling' | 'child') => void;
+    setSetting: (key: 'splitBehavior', value: 'sibling' | 'child' | 'auto') => void;
 }
