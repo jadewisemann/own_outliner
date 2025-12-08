@@ -2,6 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { useOutlinerStore } from '../store/useOutlinerStore';
 import type { NodeId } from '../types/outliner';
 import { ChevronRight, ChevronDown, ZoomIn } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { isMatch } from '../utils/keybindings';
 
 interface NodeItemProps {
@@ -415,26 +417,50 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 min-w-0">
-                    <input
-                        ref={inputRef}
-                        className={`w-full bg-transparent outline-none ${isSelected ? 'cursor-default caret-transparent' : ''}`}
-                        value={node.content}
-                        readOnly={isSelected}
-                        onChange={(e) => {
-                            if (isSelected) useOutlinerStore.getState().selectNode(id, false);
-                            updateContent(id, e.target.value);
-                        }}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            useOutlinerStore.getState().deselectAll();
-                            setFocus(id);
-                        }}
-                        onFocus={() => {
-                            if (!isSelected && focusedId !== id) setFocus(id);
-                        }}
-                        onPaste={handlePaste}
-                    />
+                <div className="flex-1 min-w-0" onClick={(e) => {
+                    // Click on container handles focus if not input
+                    e.stopPropagation();
+                    useOutlinerStore.getState().deselectAll();
+                    setFocus(id);
+                }}>
+                    {focusedId === id ? (
+                        <input
+                            ref={inputRef}
+                            className={`w-full bg-transparent outline-none ${isSelected ? 'cursor-default caret-transparent' : ''}`}
+                            value={node.content}
+                            readOnly={isSelected}
+                            onChange={(e) => {
+                                if (isSelected) useOutlinerStore.getState().selectNode(id, false);
+                                updateContent(id, e.target.value);
+                            }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                // Already focused likely, but ensure selection reset if needed
+                            }}
+                            onFocus={() => {
+                                // Handled by effect usually, but strict here
+                            }}
+                            onPaste={handlePaste}
+                        // Auto-focus logic is handled by useEffect, but we keep tabIndex management
+                        />
+                    ) : (
+                        <div className={`prose prose-sm max-w-none leading-normal text-gray-800 pointer-events-none ${node.content.trim() === '' ? 'h-6' : ''}`}>
+                            {/* Use ReactMarkdown for rendering. Pointer events none allows click through to container for focus */}
+                            {node.content.trim() === '' ? (
+                                <span className="text-gray-300 italic">Empty node</span>
+                            ) : (
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                        p: ({ node, ...props }) => <p className="m-0" {...props} />, // Remove default paragraph margins
+                                        a: ({ node, ...props }) => <a className="text-blue-500 hover:underline pointer-events-auto" onClick={e => e.stopPropagation()} target="_blank" rel="noopener noreferrer" {...props} />
+                                    }}
+                                >
+                                    {node.content}
+                                </ReactMarkdown>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
