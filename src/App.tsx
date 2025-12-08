@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { Virtuoso } from 'react-virtuoso';
 import { useOutlinerStore } from './store/useOutlinerStore';
 import { NodeItem } from './components/NodeItem';
 import { SettingsModal } from './components/SettingsModal';
+import { useVisibleNodes } from './hooks/useVisibleNodes';
 
 function App() {
   const rootNodeId = useOutlinerStore((state) => state.rootNodeId);
@@ -10,6 +12,8 @@ function App() {
   const rootNode = useOutlinerStore((state) => state.nodes[activeRootId]);
   const addNode = useOutlinerStore((state) => state.addNode);
   const setHoistedNode = useOutlinerStore((state) => state.setHoistedNode);
+
+  const flatNodes = useVisibleNodes();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -22,6 +26,7 @@ function App() {
           Own Outliner
         </h1>
         <div className="flex gap-2">
+          {/* ... buttons ... */}
           <button
             className="px-3 py-1.5 rounded text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
             onClick={() => setIsSettingsOpen(true)}
@@ -39,7 +44,8 @@ function App() {
             <span className="font-medium text-gray-800">{rootNode.content || 'Untitled'}</span>
           </div>
         )}
-        {rootNode.children.length === 0 ? (
+
+        {flatNodes.length === 0 ? (
           <div
             className="text-gray-400 italic cursor-pointer hover:bg-gray-50 p-2 rounded"
             onClick={() => addNode(activeRootId)}
@@ -47,9 +53,13 @@ function App() {
             Click to start typing...
           </div>
         ) : (
-          rootNode.children.map((childId) => (
-            <NodeItem key={childId} id={childId} level={0} />
-          ))
+          <Virtuoso
+            useWindowScroll
+            data={flatNodes}
+            itemContent={(_, node) => (
+              <NodeItem key={node.id} id={node.id} level={node.level} />
+            )}
+          />
         )}
       </main>
 

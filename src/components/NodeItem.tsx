@@ -13,6 +13,8 @@ interface NodeItemProps {
 
 export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
     const node = useOutlinerStore((state) => state.nodes[id]);
+
+
     const updateContent = useOutlinerStore((state) => state.updateContent);
     const toggleCollapse = useOutlinerStore((state) => state.toggleCollapse);
     const setFocus = useOutlinerStore((state) => state.setFocus);
@@ -35,6 +37,10 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
 
     const inputRef = useRef<HTMLInputElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+
+    // Safety check: if node is deleted but still rendered by Virtuoso briefly
+    const shouldRender = !!node;
+
 
     useEffect(() => {
         if (focusedId === id) {
@@ -459,6 +465,8 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
         }
     };
 
+    if (!shouldRender) return null;
+
     return (
         <div className={`flex flex-col select-none ${isSelected ? 'bg-blue-100 rounded' : ''}`}>
             {/* Node Row */}
@@ -545,7 +553,8 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                 </div>
             </div>
 
-            {/* Children */}
+            {/* Children - REMOVED for Virtualization (Flat List) */}
+            {/* 
             {!node.isCollapsed && node.children.length > 0 && (
                 <div className="flex flex-col">
                     {node.children.map((childId) => (
@@ -553,6 +562,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                     ))}
                 </div>
             )}
+             */}
         </div>
     );
 };
