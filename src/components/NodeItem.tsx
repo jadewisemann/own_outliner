@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useOutlinerStore } from '../store/useOutlinerStore';
 import type { NodeId } from '../types/outliner';
 import { ChevronRight, ChevronDown } from 'lucide-react';
+import { isMatch } from '../utils/keybindings';
 
 interface NodeItemProps {
     id: NodeId;
@@ -64,177 +65,188 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
     if (!node) return null;
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            if (e.altKey) {
-                moveNode(id, 'up');
-            } else {
-                moveFocus('up', e.shiftKey);
-            }
-            return;
-        }
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            if (e.altKey) {
-                moveNode(id, 'down');
-            } else {
-                moveFocus('down', e.shiftKey);
-            }
-            return;
-        }
-        if (e.key === 'Tab') {
-            e.preventDefault();
-            const state = useOutlinerStore.getState();
-            // Multi-selection support for Tab
-            const targets = isSelected && state.selectedIds.length > 0 ? state.selectedIds : [id];
+        const state = useOutlinerStore.getState();
+        const keys = state.settings.keybindings;
 
-            if (e.shiftKey) {
-                state.outdentNodes(targets);
-            } else {
-                state.indentNodes(targets);
-            }
+        // Common actions
+        if (isMatch(e, keys.moveUp)) {
+            e.preventDefault();
+            moveNode(id, 'up');
+            return;
+        }
+        if (isMatch(e, keys.moveDown)) {
+            e.preventDefault();
+            moveNode(id, 'down');
+            return;
+        }
+
+        // --- Focus Navigation (Standard Arrows) ---
+        // Fallback to standard behavior if not matched by moveUp/moveDown
+        if (e.key === 'ArrowUp' && !isMatch(e, keys.moveUp)) {
+            e.preventDefault();
+            moveFocus('up', e.shiftKey);
+            return;
+        }
+        if (e.key === 'ArrowDown' && !isMatch(e, keys.moveDown)) {
+            e.preventDefault();
+            moveFocus('down', e.shiftKey);
             return;
         }
 
         if (isSelected) {
             // --- Node Mode ---
+            if (e.key === 'Escape') {
+                // No binding for this yet
+            }
+            // Enter to Edit
             if (e.key === 'Enter') {
                 e.preventDefault();
-                selectNode(id, false);
-            } else if (e.key === 'Backspace' || e.key === 'Delete') {
+                selectNode(id, false); // Switch to Edit Mode
+                return;
+            }
+
+            if (isMatch(e, keys.deleteNode) || e.key === 'Backspace') {
                 e.preventDefault();
-                const state = useOutlinerStore.getState();
                 if (state.selectedIds.length > 1) {
                     state.deleteNodes(state.selectedIds);
                 } else {
                     deleteNode(id);
                 }
-            } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
+                return;
+            }
+
+            if (isMatch(e, keys.selectAll)) {
                 e.preventDefault();
                 expandSelection(id);
-            } else if ((e.ctrlKey || e.metaKey)) {
-                // Copy / Cut / Paste Handlers for Node Mode
-                if (e.key === 'c') {
-                    e.preventDefault();
-                    const state = useOutlinerStore.getState();
-                    const targets = state.selectedIds.length > 0 ? state.selectedIds : [id];
-                    import('../utils/clipboard').then(({ serializeNodesToClipboard }) => {
-                        const { text, json } = serializeNodesToClipboard(targets, state.nodes);
-                        const data = [new ClipboardItem({
-                            'text/plain': new Blob([text], { type: 'text/plain' }),
-                            'application/json': new Blob([json], { type: 'application/json' })
-                        })];
-                        navigator.clipboard.write(data).catch(err => {
-                            console.warn('Clipboard write failed', err);
-                            navigator.clipboard.writeText(text);
-                        });
+                return;
+            }
+
+            if (isMatch(e, keys.toggleCollapse)) {
+                e.preventDefault();
+                state.toggleCollapse(id);
+                return;
+            }
+
+            // Clipboard
+            if (isMatch(e, keys.copyNode)) {
+                e.preventDefault();
+                const targets = state.selectedIds.length > 0 ? state.selectedIds : [id];
+                import('../utils/clipboard').then(({ serializeNodesToClipboard }) => {
+                    const { text, json } = serializeNodesToClipboard(targets, state.nodes);
+                    const data = [new ClipboardItem({
+                        'text/plain': new Blob([text], { type: 'text/plain' }),
+                        'application/json': new Blob([json], { type: 'application/json' })
+                    })];
+                    navigator.clipboard.write(data).catch(() => navigator.clipboard.writeText(text));
+                });
+                return;
+            }
+            if (isMatch(e, keys.cutNode)) {
+                e.preventDefault();
+                const targets = state.selectedIds.length > 0 ? state.selectedIds : [id];
+                import('../utils/clipboard').then(({ serializeNodesToClipboard }) => {
+                    const { text, json } = serializeNodesToClipboard(targets, state.nodes);
+                    const data = [new ClipboardItem({
+                        'text/plain': new Blob([text], { type: 'text/plain' }),
+                        'application/json': new Blob([json], { type: 'application/json' })
+                    })];
+                    navigator.clipboard.write(data).then(() => {
+                        state.deleteNodes(targets);
+                    }).catch(() => {
+                        navigator.clipboard.writeText(text).then(() => state.deleteNodes(targets));
                     });
-                } else if (e.key === 'x') {
-                    e.preventDefault();
-                    const state = useOutlinerStore.getState();
-                    const targets = state.selectedIds.length > 0 ? state.selectedIds : [id];
-                    import('../utils/clipboard').then(({ serializeNodesToClipboard }) => {
-                        const { text, json } = serializeNodesToClipboard(targets, state.nodes);
-                        const data = [new ClipboardItem({
-                            'text/plain': new Blob([text], { type: 'text/plain' }),
-                            'application/json': new Blob([json], { type: 'application/json' })
-                        })];
-                        navigator.clipboard.write(data).then(() => {
-                            state.deleteNodes(targets);
-                        }).catch(() => {
-                            navigator.clipboard.writeText(text).then(() => {
-                                state.deleteNodes(targets);
-                            });
-                        });
-                    });
-                } else if (e.key === 'v') {
-                    e.preventDefault();
-                    navigator.clipboard.read().then(items => {
-                        for (const item of items) {
-                            if (item.types.includes('application/json')) {
-                                item.getType('application/json').then(blob => {
-                                    blob.text().then(json => {
-                                        import('../utils/clipboard').then(() => {
-                                            try {
-                                                const parsed = JSON.parse(json);
-                                                if (parsed.format === 'outliner/nodes') {
-                                                    const state = useOutlinerStore.getState();
-                                                    const parent = state.nodes[node.parentId || ''];
-                                                    if (parent) {
-                                                        const index = parent.children.indexOf(id) + 1;
-                                                        pasteNodes(parent.id, index, parsed.nodes);
-                                                    }
+                });
+                return;
+            }
+            if (isMatch(e, keys.pasteNode)) {
+                e.preventDefault();
+                navigator.clipboard.read().then(items => {
+                    for (const item of items) {
+                        if (item.types.includes('application/json')) {
+                            item.getType('application/json').then(blob => {
+                                blob.text().then(json => {
+                                    import('../utils/clipboard').then(() => {
+                                        try {
+                                            const parsed = JSON.parse(json);
+                                            if (parsed.format === 'outliner/nodes') {
+                                                const parent = state.nodes[node.parentId || ''];
+                                                if (parent) {
+                                                    const index = parent.children.indexOf(id) + 1;
+                                                    pasteNodes(parent.id, index, parsed.nodes);
                                                 }
-                                            } catch (e) {
-                                                console.error(e);
                                             }
-                                        });
+                                        } catch (e) {
+                                            console.error(e);
+                                        }
                                     });
                                 });
-                                return;
-                            }
+                            });
+                            return;
                         }
-                        navigator.clipboard.readText().then(text => {
-                            if (text) {
-                                import('../utils/clipboard').then(({ parseIndentedText }) => {
-                                    const parsed = parseIndentedText(text);
-                                    if (parsed.length > 0) {
-                                        const state = useOutlinerStore.getState();
-                                        const parent = state.nodes[node.parentId || ''];
-                                        if (parent) {
-                                            const index = parent.children.indexOf(id) + 1;
-                                            pasteNodes(parent.id, index, parsed);
-                                        }
+                    }
+                    navigator.clipboard.readText().then(text => {
+                        if (text) {
+                            import('../utils/clipboard').then(({ parseIndentedText }) => {
+                                const parsed = parseIndentedText(text);
+                                if (parsed.length > 0) {
+                                    const parent = state.nodes[node.parentId || ''];
+                                    if (parent) {
+                                        const index = parent.children.indexOf(id) + 1;
+                                        pasteNodes(parent.id, index, parsed);
                                     }
-                                });
-                            }
-                        });
-                    }).catch(err => {
-                        console.warn('Clipboard read failed, trying readText', err);
-                        navigator.clipboard.readText().then(text => {
-                            if (text) {
-                                import('../utils/clipboard').then(({ parseIndentedText }) => {
-                                    const parsed = parseIndentedText(text);
-                                    if (parsed.length > 0) {
-                                        const state = useOutlinerStore.getState();
-                                        const parent = state.nodes[node.parentId || ''];
-                                        if (parent) {
-                                            const index = parent.children.indexOf(id) + 1;
-                                            pasteNodes(parent.id, index, parsed);
-                                        }
-                                    }
-                                });
-                            }
-                        });
+                                }
+                            });
+                        }
                     });
-                }
-            } else if (e.key === 'ArrowLeft') {
+                }).catch(() => {
+                    navigator.clipboard.readText().then(text => {
+                        if (text) {
+                            import('../utils/clipboard').then(({ parseIndentedText }) => {
+                                const parsed = parseIndentedText(text);
+                                if (parsed.length > 0) {
+                                    const parent = state.nodes[node.parentId || ''];
+                                    if (parent) {
+                                        const index = parent.children.indexOf(id) + 1;
+                                        pasteNodes(parent.id, index, parsed);
+                                    }
+                                }
+                            });
+                        }
+                    });
+                });
+                return;
+            }
+
+            // Arrow Left/Right to switch mode
+            if (e.key === 'ArrowLeft') {
                 e.preventDefault();
-                // Move to Edit Mode at Start
                 deselectAll();
                 setFocus(id, 0);
             } else if (e.key === 'ArrowRight') {
                 e.preventDefault();
-                // Move to Edit Mode at End
                 deselectAll();
                 setFocus(id, node.content.length);
             }
+
         } else {
             // --- Edit Mode (Input) ---
-            // Fix: Check for composition to support CJK IME
-            if (e.nativeEvent.isComposing) return;
-
             if (e.key === 'Escape') {
                 e.preventDefault();
                 selectNode(id);
-            } else if (e.key === 'Enter') {
+                return;
+            }
+
+            if (isMatch(e, keys.splitNode)) {
                 e.preventDefault();
                 if (inputRef.current) {
                     const cursorPos = inputRef.current.selectionStart || 0;
                     splitNode(id, cursorPos);
                 }
-            } else if (e.key === 'Backspace') {
-                // Ensure we are checking the input
+                return;
+            }
+
+            if (isMatch(e, keys.mergeNode)) {
+                // Only if at start
                 if (inputRef.current && inputRef.current.selectionStart === 0 && inputRef.current.selectionEnd === 0) {
                     e.preventDefault();
                     if (node.content.length === 0) {
@@ -243,16 +255,26 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                         mergeNode(id);
                     }
                 }
-            } else if (e.key === 'Delete') {
+                return;
+            }
+
+            if (isMatch(e, keys.deleteNode)) {
+                // Delete key specifically
+                // Usually Delete in Edit Mode only deletes if empty? Or standard text behavior.
+                // Existing logic: if empty, delete node.
                 if (node.content.length === 0) {
                     e.preventDefault();
                     deleteNode(id);
                 }
-            } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
+                return;
+            }
+
+            if (isMatch(e, keys.selectAll)) {
                 if (inputRef.current && inputRef.current.selectionStart === 0 && inputRef.current.selectionEnd === inputRef.current.value.length) {
                     e.preventDefault();
                     expandSelection(id);
                 }
+                return;
             }
         }
     };
