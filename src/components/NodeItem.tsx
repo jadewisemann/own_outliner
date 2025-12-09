@@ -1,10 +1,9 @@
-import React, { useEffect, useRef } from 'react';
-import { useOutlinerStore } from '../store/useOutlinerStore';
-import type { NodeId } from '../types/outliner';
-import { ChevronRight, ChevronDown, ZoomIn } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { isMatch } from '../utils/keybindings';
+import React, { useRef, useEffect } from 'react';
+import type { NodeId } from '@/types/outliner';
+import { useNodeLogic } from '@/hooks/node/useNodeLogic';
+import { useNodeKeys } from '@/hooks/node/useNodeKeys';
+import { NodeBullet } from './node/NodeBullet';
+import { NodeContent } from './node/NodeContent';
 
 interface NodeItemProps {
     id: NodeId;
@@ -12,38 +11,22 @@ interface NodeItemProps {
 }
 
 export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
-    const node = useOutlinerStore((state) => state.nodes[id]);
-
-
-    const updateContent = useOutlinerStore((state) => state.updateContent);
-    const toggleCollapse = useOutlinerStore((state) => state.toggleCollapse);
-    const setFocus = useOutlinerStore((state) => state.setFocus);
-    const focusedId = useOutlinerStore((state) => state.focusedId);
-    const focusCursorPos = useOutlinerStore((state) => state.focusCursorPos);
-    const deleteNode = useOutlinerStore((state) => state.deleteNode);
-    // indent/outdent/moveNode/setHoistedNode unused locally but good to have refs if needed
-    const moveFocus = useOutlinerStore((state) => state.moveFocus);
-    const moveNode = useOutlinerStore((state) => state.moveNode);
-    const pasteNodes = useOutlinerStore((state) => state.pasteNodes);
-    const splitNode = useOutlinerStore((state) => state.splitNode);
-    const mergeNode = useOutlinerStore((state) => state.mergeNode);
-
-    // Selection
-    const selectedIds = useOutlinerStore((state) => state.selectedIds);
-    const expandSelection = useOutlinerStore((state) => state.expandSelection);
-    const isSelected = selectedIds.includes(id);
-    const selectNode = useOutlinerStore((state) => state.selectNode);
-    const deselectAll = useOutlinerStore((state) => state.deselectAll);
+    const {
+        node,
+        isSelected,
+        isFocused,
+        focusCursorPos,
+        updateContent
+    } = useNodeLogic(id);
 
     const inputRef = useRef<HTMLInputElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Safety check: if node is deleted but still rendered by Virtuoso briefly
-    const shouldRender = !!node;
+    const { handleKeyDown } = useNodeKeys(id, node, isSelected, inputRef, updateContent);
 
-
+    // Focus Management Effect
     useEffect(() => {
-        if (focusedId === id) {
+        if (isFocused) {
             if (isSelected) {
                 if (document.activeElement !== containerRef.current && containerRef.current) {
                     containerRef.current.focus();
@@ -52,15 +35,13 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                 if (document.activeElement !== inputRef.current && inputRef.current) {
                     inputRef.current.focus();
 
-                    // Handle cursor positioning based on store intent or default to end
                     const len = inputRef.current.value.length;
-                    let newPos = len; // Default to end
+                    let newPos = len;
 
                     if (focusCursorPos !== null) {
                         newPos = focusCursorPos;
                     }
 
-                    // Safety check
                     if (newPos < 0) newPos = 0;
                     if (newPos > len) newPos = len;
 
@@ -68,406 +49,32 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                 }
             }
         }
-    }, [focusedId, id, isSelected, focusCursorPos]);
-
-
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        const state = useOutlinerStore.getState();
-        const keys = state.settings.keybindings;
-
-        // Common actions
-        if (isMatch(e, keys.moveUp)) {
-            e.preventDefault();
-            moveNode(id, 'up');
-            return;
-        }
-        if (isMatch(e, keys.moveDown)) {
-            e.preventDefault();
-            moveNode(id, 'down');
-            return;
-        }
-
-        // --- Focus Navigation (Standard Arrows) ---
-        // Fallback to standard behavior if not matched by moveUp/moveDown
-        if (e.key === 'ArrowUp' && !isMatch(e, keys.moveUp)) {
-            e.preventDefault();
-            moveFocus('up', e.shiftKey);
-            return;
-        }
-        if (e.key === 'ArrowDown' && !isMatch(e, keys.moveDown)) {
-            e.preventDefault();
-            moveFocus('down', e.shiftKey);
-            return;
-        }
-
-        if (isSelected) {
-            // --- Node Mode ---
-            if (isMatch(e, keys.indentNode)) {
-                e.preventDefault();
-                const ids = state.selectedIds.length > 0 ? state.selectedIds : [id];
-                state.indentNodes(ids);
-                return;
-            }
-            if (isMatch(e, keys.outdentNode)) {
-                e.preventDefault();
-                const ids = state.selectedIds.length > 0 ? state.selectedIds : [id];
-                state.outdentNodes(ids);
-                return;
-            }
-
-            if (e.key === 'Escape') {
-                // No binding for this yet
-            }
-            // Enter to Edit
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                selectNode(id, false); // Switch to Edit Mode
-                return;
-            }
-
-            if (isMatch(e, keys.deleteNode) || e.key === 'Backspace') {
-                e.preventDefault();
-                if (state.selectedIds.length > 1) {
-                    state.deleteNodes(state.selectedIds);
-                } else {
-                    deleteNode(id);
-                }
-                return;
-            }
-
-            if (isMatch(e, keys.deleteLine)) {
-                e.preventDefault();
-                // "Delete Line" concept: Delete entire node even if not empty
-                if (state.selectedIds.length > 1) {
-                    state.deleteNodes(state.selectedIds);
-                } else {
-                    // Single node delete (deleteNodes handles children logic implicitly by tree structure)
-                    // If we want to strictly emulate "Delete Line" vs "Delete Node", in outliner they are usually same for single line.
-                    state.deleteNodes([id]);
-                }
-                return;
-            }
-
-            if (isMatch(e, keys.selectLine)) {
-                e.preventDefault();
-                // Already selected, ensures single selection if multi was active?
-                // Or maybe expand selection logic? For now, re-select ensures it's the anchor.
-                selectNode(id, false);
-                return;
-            }
-
-            if (isMatch(e, keys.selectAll)) {
-                e.preventDefault();
-                expandSelection(id);
-                return;
-            }
-
-            if (isMatch(e, keys.toggleCollapse)) {
-                e.preventDefault();
-                state.toggleCollapse(id);
-                return;
-            }
-
-            if (isMatch(e, keys.zoomIn)) {
-                e.preventDefault();
-                // Zoom into the current node
-                state.setHoistedNode(id);
-                return;
-            }
-
-            if (isMatch(e, keys.zoomOut)) {
-                e.preventDefault();
-                // Zoom out one level from the CURRENT HOISTED VIEW (not necessarily the focused node)
-                const currentHoistedId = state.hoistedNodeId;
-                if (currentHoistedId) {
-                    const currentHoistedNode = state.nodes[currentHoistedId];
-                    // If current hoisted node has a parent, zoom to that parent.
-                    // If parent is root, or null, un-hoist (show root).
-                    if (currentHoistedNode && currentHoistedNode.parentId && currentHoistedNode.parentId !== state.rootNodeId) {
-                        state.setHoistedNode(currentHoistedNode.parentId);
-                    } else {
-                        state.setHoistedNode(null); // Go to Root
-                    }
-                }
-                return;
-            }
-
-            // Clipboard
-            if (isMatch(e, keys.copyNode)) {
-                e.preventDefault();
-                const targets = state.selectedIds.length > 0 ? state.selectedIds : [id];
-                import('../utils/clipboard').then(({ serializeNodesToClipboard }) => {
-                    const { text, json } = serializeNodesToClipboard(targets, state.nodes);
-                    const data = [new ClipboardItem({
-                        'text/plain': new Blob([text], { type: 'text/plain' }),
-                        'application/json': new Blob([json], { type: 'application/json' })
-                    })];
-                    navigator.clipboard.write(data).catch(() => navigator.clipboard.writeText(text));
-                });
-                return;
-            }
-            if (isMatch(e, keys.cutNode)) {
-                e.preventDefault();
-                const targets = state.selectedIds.length > 0 ? state.selectedIds : [id];
-                import('../utils/clipboard').then(({ serializeNodesToClipboard }) => {
-                    const { text, json } = serializeNodesToClipboard(targets, state.nodes);
-                    const data = [new ClipboardItem({
-                        'text/plain': new Blob([text], { type: 'text/plain' }),
-                        'application/json': new Blob([json], { type: 'application/json' })
-                    })];
-                    navigator.clipboard.write(data).then(() => {
-                        state.deleteNodes(targets);
-                    }).catch(() => {
-                        navigator.clipboard.writeText(text).then(() => state.deleteNodes(targets));
-                    });
-                });
-                return;
-            }
-            if (isMatch(e, keys.pasteNode)) {
-                e.preventDefault();
-                navigator.clipboard.read().then(items => {
-                    for (const item of items) {
-                        if (item.types.includes('application/json')) {
-                            item.getType('application/json').then(blob => {
-                                blob.text().then(json => {
-                                    import('../utils/clipboard').then(() => {
-                                        try {
-                                            const parsed = JSON.parse(json);
-                                            if (parsed.format === 'outliner/nodes') {
-                                                const parent = state.nodes[node.parentId || ''];
-                                                if (parent) {
-                                                    const index = parent.children.indexOf(id) + 1;
-                                                    pasteNodes(parent.id, index, parsed.nodes);
-                                                }
-                                            }
-                                        } catch (e) {
-                                            console.error(e);
-                                        }
-                                    });
-                                });
-                            });
-                            return;
-                        }
-                    }
-                    navigator.clipboard.readText().then(text => {
-                        if (text) {
-                            import('../utils/clipboard').then(({ parseIndentedText }) => {
-                                const parsed = parseIndentedText(text);
-                                if (parsed.length > 0) {
-                                    const parent = state.nodes[node.parentId || ''];
-                                    if (parent) {
-                                        const index = parent.children.indexOf(id) + 1;
-                                        pasteNodes(parent.id, index, parsed);
-                                    }
-                                }
-                            });
-                        }
-                    });
-                }).catch(() => {
-                    navigator.clipboard.readText().then(text => {
-                        if (text) {
-                            import('../utils/clipboard').then(({ parseIndentedText }) => {
-                                const parsed = parseIndentedText(text);
-                                if (parsed.length > 0) {
-                                    const parent = state.nodes[node.parentId || ''];
-                                    if (parent) {
-                                        const index = parent.children.indexOf(id) + 1;
-                                        pasteNodes(parent.id, index, parsed);
-                                    }
-                                }
-                            });
-                        }
-                    });
-                });
-                return;
-            }
-
-            // Arrow Left/Right to switch mode
-            if (e.key === 'ArrowLeft') {
-                e.preventDefault();
-                deselectAll();
-                setFocus(id, 0);
-            } else if (e.key === 'ArrowRight') {
-                e.preventDefault();
-                deselectAll();
-                setFocus(id, node.content.length);
-            }
-
-        } else {
-            // --- Edit Mode (Input) ---
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                selectNode(id);
-                return;
-            }
-
-            if (isMatch(e, keys.splitNode)) {
-                e.preventDefault();
-                if (inputRef.current) {
-                    const cursorPos = inputRef.current.selectionStart || 0;
-                    splitNode(id, cursorPos);
-                }
-                return;
-            }
-
-            if (isMatch(e, keys.indentNode)) {
-                e.preventDefault();
-                state.indentNodes([id]);
-                return;
-            }
-            if (isMatch(e, keys.outdentNode)) {
-                e.preventDefault();
-                state.outdentNodes([id]);
-                return;
-            }
-
-            if (isMatch(e, keys.mergeNode)) {
-                // Only if at start
-                if (inputRef.current && inputRef.current.selectionStart === 0 && inputRef.current.selectionEnd === 0) {
-                    e.preventDefault();
-                    if (node.content.length === 0) {
-                        deleteNode(id);
-                    } else {
-                        mergeNode(id);
-                    }
-                }
-                return;
-            }
-
-            if (isMatch(e, keys.deleteNode)) {
-                // Delete key specifically
-                // Usually Delete in Edit Mode only deletes if empty? Or standard text behavior.
-                // Existing logic: if empty, delete node.
-                if (node.content.length === 0) {
-                    e.preventDefault();
-                    deleteNode(id);
-                }
-                return;
-            }
-
-            if (isMatch(e, keys.selectAll)) {
-                if (inputRef.current && inputRef.current.selectionStart === 0 && inputRef.current.selectionEnd === inputRef.current.value.length) {
-                    e.preventDefault();
-                    expandSelection(id);
-                }
-                return;
-            }
-
-            if (isMatch(e, keys.deleteLine)) {
-                e.preventDefault();
-                state.deleteNodes([id]);
-                return;
-            }
-
-            if (isMatch(e, keys.selectLine)) {
-                e.preventDefault();
-                selectNode(id, false); // Select current node
-                return;
-            }
-
-            // --- Formatting Shortcuts ---
-            const applyFormat = (marker: string) => {
-                if (!inputRef.current) return;
-                e.preventDefault();
-
-                const input = inputRef.current;
-                const start = input.selectionStart || 0;
-                const end = input.selectionEnd || 0;
-                const value = input.value;
-
-                // If no selection, maybe apply to current word? Or just insert markers?
-                // For simplicity MVP: Insert markers around cursor or wrap selection.
-
-                let textToWrap = value.slice(start, end);
-                let before = value.slice(0, start);
-                let after = value.slice(end);
-
-                // Check if already wrapped
-                // This is a naive check. A robust lexer is complex.
-                // We check if 'before' ends with marker and 'after' starts with marker.
-                if (before.endsWith(marker) && after.startsWith(marker)) {
-                    // Unwrap
-                    const newContent = before.slice(0, -marker.length) + textToWrap + after.slice(marker.length);
-                    updateContent(id, newContent);
-                    // Restore selection
-                    setTimeout(() => {
-                        if (inputRef.current) {
-                            inputRef.current.setSelectionRange(start - marker.length, end - marker.length);
-                        }
-                    }, 0);
-                } else {
-                    // Wrap
-                    const newContent = before + marker + textToWrap + marker + after;
-                    updateContent(id, newContent);
-                    // Restore selection (include markers? usually select inside)
-                    setTimeout(() => {
-                        if (inputRef.current) {
-                            // Keep selection on the text inside formatted markers
-                            inputRef.current.setSelectionRange(start + marker.length, end + marker.length);
-                        }
-                    }, 0);
-                }
-            };
-
-            if (isMatch(e, keys.formatBold)) {
-                applyFormat('**');
-                return;
-            }
-            if (isMatch(e, keys.formatItalic)) {
-                applyFormat('*');
-                return;
-            }
-            if (isMatch(e, keys.formatStrike)) {
-                applyFormat('~~');
-                return;
-            }
-
-            // Undo / Redo
-            // Note: Zundo attaches 'temporal' to the store
-            if (isMatch(e, keys.undo)) {
-                e.preventDefault();
-                const store = useOutlinerStore as any;
-                if (store.temporal) {
-                    store.temporal.getState().undo();
-                }
-                return;
-            }
-            if (isMatch(e, keys.redo)) {
-                e.preventDefault();
-                const store = useOutlinerStore as any;
-                if (store.temporal) {
-                    store.temporal.getState().redo();
-                }
-                return;
-            }
-        }
-    };
+    }, [isFocused, isSelected, focusCursorPos]);
 
     const handlePaste = (e: React.ClipboardEvent) => {
-        // Edit Mode Paste (Input only)
         const text = e.clipboardData.getData('text');
         if (text.includes('\n')) {
             e.preventDefault();
-            import('../utils/clipboard').then(({ parseIndentedText }) => {
+            import('@/utils/clipboard').then(({ parseIndentedText }) => {
                 const parsed = parseIndentedText(text);
                 if (parsed.length > 0) {
-                    const state = useOutlinerStore.getState();
-                    const parent = state.nodes[node.parentId || ''];
-                    if (parent) {
-                        const index = parent.children.indexOf(id) + 1;
-                        pasteNodes(parent.id, index, parsed);
-                    }
+                    import('@/store/useOutlinerStore').then(({ useOutlinerStore }) => {
+                        const state = useOutlinerStore.getState();
+                        const parent = state.nodes[node.parentId || ''];
+                        if (parent) {
+                            const index = parent.children.indexOf(id) + 1;
+                            state.pasteNodes(parent.id, index, parsed);
+                        }
+                    });
                 }
             });
         }
     };
 
-    if (!shouldRender) return null;
+    if (!node) return null;
 
     return (
-        <div className={`oo-node-item flex flex-col select-none ${isSelected ? 'oo-node-selected bg-blue-100 rounded' : ''} ${focusedId === id ? 'oo-node-focused' : ''}`}>
-            {/* Node Row */}
+        <div className={`oo-node-item flex flex-col select-none ${isSelected ? 'oo-node-selected bg-blue-100 rounded' : ''} ${isFocused ? 'oo-node-focused' : ''}`}>
             <div
                 ref={containerRef}
                 tabIndex={-1}
@@ -475,95 +82,13 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                 style={{ paddingLeft: `${level * 20}px` }}
                 onKeyDown={handleKeyDown}
             >
-                {/* Bullet / Toggle */}
-                <div className="oo-node-bullet w-6 h-6 flex items-center justify-center mr-1 cursor-pointer text-gray-400 hover:text-gray-600 relative group/bullet">
-                    {/* Zoom Button (only visible on hover) */}
-                    <div
-                        className="absolute right-full mr-1 opacity-0 group-hover/bullet:opacity-100 transition-opacity p-0.5 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-600"
-                        title="Zoom In"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            useOutlinerStore.getState().setHoistedNode(id);
-                        }}
-                    >
-                        <ZoomIn size={14} />
-                    </div>
-                    {/* Actually, user requested 'Zoom In Icon'. I'll add ZoomIn import later or use a simple visual for now. */}
-
-                    <span onClick={(e) => { e.stopPropagation(); toggleCollapse(id); }}>
-                        {node.children.length > 0 && (
-                            !node.isCollapsed ? <ChevronDown size={14} /> : <ChevronRight size={14} />
-                        )}
-                        {node.children.length === 0 && <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />}
-                    </span>
-                </div>
-
-                {/* Content */}
-                <div className="oo-node-content flex-1 min-w-0" onClick={(e) => {
-                    // Click on container handles focus if not input
-                    e.stopPropagation();
-                    useOutlinerStore.getState().deselectAll();
-                    setFocus(id);
-                }}>
-                    {focusedId === id ? (
-                        <input
-                            ref={inputRef}
-                            className={`w-full bg-transparent outline-none ${isSelected ? 'cursor-default caret-transparent' : ''}`}
-                            value={node.content}
-                            readOnly={isSelected}
-                            onChange={(e) => {
-                                if (isSelected) useOutlinerStore.getState().selectNode(id, false);
-                                updateContent(id, e.target.value);
-                            }}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                // Already focused likely, but ensure selection reset if needed
-                            }}
-                            onFocus={() => {
-                                // Handled by effect usually, but strict here
-                            }}
-                            onPaste={handlePaste}
-                        // Auto-focus logic is handled by useEffect, but we keep tabIndex management
-                        />
-                    ) : (
-                        <div className={`prose prose-sm max-w-none leading-normal text-gray-800 pointer-events-none ${node.content.trim() === '' ? 'h-6' : ''}`}>
-                            {/* Use ReactMarkdown for rendering. Pointer events none allows click through to container for focus */}
-                            {node.content.trim() === '' ? (
-                                <span className="text-gray-300 italic">Empty node</span>
-                            ) : (
-                                <ReactMarkdown
-                                    remarkPlugins={[remarkGfm]}
-                                    components={{
-                                        p: ({ node, ...props }) => <p className="oo-markdown-p m-0" {...props} />, // Remove default paragraph margins
-                                        a: ({ node, ...props }) => <a className="oo-markdown-link text-blue-500 hover:underline pointer-events-auto" onClick={e => e.stopPropagation()} target="_blank" rel="noopener noreferrer" {...props} />,
-                                        h1: ({ node, ...props }) => <h1 className="oo-markdown-h1 text-xl font-bold mt-2 mb-1 text-gray-900" {...props} />,
-                                        h2: ({ node, ...props }) => <h2 className="oo-markdown-h2 text-lg font-bold mt-2 mb-1 text-gray-800" {...props} />,
-                                        h3: ({ node, ...props }) => <h3 className="oo-markdown-h3 text-base font-bold mt-1 mb-1 text-gray-800" {...props} />,
-                                        blockquote: ({ node, ...props }) => <blockquote className="oo-markdown-blockquote border-l-4 border-gray-300 pl-2 text-gray-500 italic my-1" {...props} />,
-                                        code: ({ node, ...props }) => <code className="oo-markdown-code bg-gray-100 px-1 rounded text-sm font-mono text-red-500" {...props} />,
-                                        strong: ({ node, ...props }) => <strong className="oo-markdown-bold font-bold" {...props} />,
-                                        em: ({ node, ...props }) => <em className="oo-markdown-italic italic" {...props} />,
-                                        del: ({ node, ...props }) => <del className="oo-markdown-strike line-through" {...props} />,
-                                    }}
-                                >
-                                    {node.content}
-                                </ReactMarkdown>
-                            )}
-                        </div>
-                    )}
-                </div>
+                <NodeBullet id={id} />
+                <NodeContent
+                    id={id}
+                    inputRef={inputRef}
+                    onPaste={handlePaste}
+                />
             </div>
-
-            {/* Children - REMOVED for Virtualization (Flat List) */}
-            {/* 
-            {!node.isCollapsed && node.children.length > 0 && (
-                <div className="flex flex-col">
-                    {node.children.map((childId) => (
-                        <NodeItem key={childId} id={childId} level={level + 1} />
-                    ))}
-                </div>
-            )}
-             */}
         </div>
     );
 };
