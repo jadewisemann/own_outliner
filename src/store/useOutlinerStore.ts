@@ -2,12 +2,12 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { temporal } from 'zundo';
 
-import type { OutlinerState } from '../types/outliner';
-import { defaultKeybindings } from '../utils/keybindings';
-import { createNodeSlice } from './slices/nodeSlice';
-import { createSelectionSlice } from './slices/selectionSlice';
-import { createFocusSlice } from './slices/focusSlice';
-import { createSettingsSlice } from './slices/settingsSlice';
+import type { OutlinerState } from '@/types/outliner';
+import { defaultKeybindings } from '@/utils/keybindings';
+import { createNodeSlice } from '@/store/slices/nodeSlice';
+import { createSelectionSlice } from '@/store/slices/selectionSlice';
+import { createFocusSlice } from '@/store/slices/focusSlice';
+import { createSettingsSlice } from '@/store/slices/settingsSlice';
 
 const defaultSettings = {
     splitBehavior: 'auto' as const,

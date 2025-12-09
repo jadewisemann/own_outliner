@@ -1,6 +1,6 @@
 
 import type { StateCreator } from 'zustand';
-import type { OutlinerState, NodeId } from '../../types/outliner';
+import type { OutlinerState, NodeId } from '@/types/outliner';
 
 export interface FocusSlice {
     focusedId: NodeId | null;

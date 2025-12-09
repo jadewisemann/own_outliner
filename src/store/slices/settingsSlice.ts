@@ -1,7 +1,7 @@
 
 import type { StateCreator } from 'zustand';
-import type { OutlinerState, KeyAction, Keybinding } from '../../types/outliner';
-import { defaultKeybindings } from '../../utils/keybindings';
+import type { OutlinerState, KeyAction, Keybinding } from '@/types/outliner';
+import { defaultKeybindings } from '@/utils/keybindings';
 
 export interface SettingsSlice {
     settings: {

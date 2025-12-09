@@ -1,7 +1,8 @@
 
 import type { StateCreator } from 'zustand';
-import type { OutlinerState, NodeData, NodeId } from '../../types/outliner';
-import { generateId, createInitialNode } from '../../utils/storeUtils';
+import type { OutlinerState, NodeData, NodeId } from '@/types/outliner';
+import { generateId, createInitialNode } from '@/utils/storeUtils';
+
 
 // Define the Node Slice state
 export interface NodeSlice {
