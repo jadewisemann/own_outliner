@@ -18,6 +18,15 @@ export const isMatch = (event: KeyboardEvent | React.KeyboardEvent, binding: Key
     return true;
 };
 
+export const executeIfMatch = (e: React.KeyboardEvent, binding: Keybinding, action: () => void) => {
+    if (isMatch(e, binding)) {
+        e.preventDefault();
+        action();
+        return true;
+    }
+    return false;
+};
+
 export const defaultKeybindings: Record<string, Keybinding> = {
     splitNode: { key: 'Enter' },
     mergeNode: { key: 'Backspace' },
