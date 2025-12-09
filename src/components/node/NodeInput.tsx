@@ -10,6 +10,12 @@ interface NodeInputProps {
     onPaste: (e: React.ClipboardEvent) => void;
 }
 
+// We need to access the input DOM node locally to insert text.
+// Since ref is forwarded, it might be a function or object.
+// Standard pattern: useImperativeHandle or just a local ref if we didn't need to forward?
+// Actually NodeInput MUST forward ref for parent focus management.
+// Let's rely on the parent passing a RefObject, OR create an inner ref and sync it?
+// Simpler: Just cast ref to RefObject since we control the parent usage in NodeItem/NodeContent
 export const NodeInput = forwardRef<HTMLInputElement, NodeInputProps>(
     ({ id, content, isSelected, onPaste }, ref) => {
         const { updateContent, selectNode } = useNodeLogic(id);
@@ -28,17 +34,12 @@ export const NodeInput = forwardRef<HTMLInputElement, NodeInputProps>(
             updateContent(id, val);
 
             // Trigger Logic: Check for last '[[` before cursor
-            // Optimization: Only check if last char typed was '[' or we are in popup mode
-            // Simple approach: Check text before cursor
             const textBeforeCursor = val.slice(0, selectionStart);
             const match = textBeforeCursor.match(/\[\[([^\]]*)$/); // Match [[ followed by anything not ]
 
             if (match) {
                 const query = match[1];
                 const rect = e.target.getBoundingClientRect();
-                // Rudimentary positioning: rect.left + approx char width * valid length
-                // Better: usage of a mirror div or generic approximation
-                // For MVP: Just stick it near the input start + offset
                 setShowPopup(true);
                 setPopupQuery(query);
                 setTriggerIndex(match.index!); // Start of [[
@@ -47,24 +48,6 @@ export const NodeInput = forwardRef<HTMLInputElement, NodeInputProps>(
                     left: rect.left + (match.index! * 8) // Approx 8px per char
                 });
             } else {
-                setShowPopup(false);
-            }
-        };
-
-        const handleSelectLink = (targetId: NodeId) => {
-            // Replace [[Query with ((ID))
-            if (triggerIndex === -1) return;
-
-            // Re-read content
-
-            // simplified:
-            const match = content.slice(0).match(/\[\[([^\]]*)$/);
-            if (match && match.index !== undefined) {
-                const prefix = content.slice(0, match.index);
-                const suffix = content.slice(match.index + match[0].length);
-
-                const newText = `${prefix}((${targetId}))${suffix} `; // Add space for flow
-                updateContent(id, newText);
                 setShowPopup(false);
             }
         };
@@ -86,7 +69,32 @@ export const NodeInput = forwardRef<HTMLInputElement, NodeInputProps>(
                     <InlineSearchPopup
                         query={popupQuery}
                         position={popupPos}
-                        onSelect={handleSelectLink}
+                        onSelect={(selectedId, selectedContent) => {
+                            const internalRef = ref as React.RefObject<HTMLInputElement>;
+                            if (!internalRef.current) return;
+
+                            const value = internalRef.current.value;
+                            const before = value.substring(0, triggerIndex); // Use triggerIndex for start
+                            // Standard markdown link format: [Content](((UUID)))
+                            const linkText = `[${selectedContent}](((${selectedId})))`;
+                            // Calculate the length of the matched query part to correctly slice 'after'
+                            const matchedQueryLength = popupQuery.length;
+                            const after = value.substring(triggerIndex + 2 + matchedQueryLength); // +2 for '[['
+
+                            const newValue = before + linkText + after;
+                            updateContent(id, newValue);
+
+                            setShowPopup(false); // Close popup
+
+                            // Restore focus and cursor
+                            requestAnimationFrame(() => {
+                                if (internalRef.current) {
+                                    internalRef.current.focus();
+                                    const newCursorPos = before.length + linkText.length;
+                                    internalRef.current.setSelectionRange(newCursorPos, newCursorPos);
+                                }
+                            });
+                        }}
                         onClose={() => setShowPopup(false)}
                     />
                 )}

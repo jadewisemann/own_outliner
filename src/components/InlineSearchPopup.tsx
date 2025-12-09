@@ -5,7 +5,7 @@ import type { NodeId } from '@/types/outliner';
 interface InlineSearchPopupProps {
     query: string;
     position: { top: number; left: number };
-    onSelect: (id: NodeId) => void;
+    onSelect: (nodeId: NodeId, content: string) => void;
     onClose: () => void;
 }
 
@@ -35,8 +35,8 @@ export const InlineSearchPopup: React.FC<InlineSearchPopupProps> = ({ query, pos
                 setSelectedIndex(prev => Math.max(prev - 1, 0));
             } else if (e.key === 'Enter') {
                 e.preventDefault();
-                if (results[selectedIndex]) {
-                    onSelect(results[selectedIndex].id);
+                if (selectedIndex >= 0 && selectedIndex < results.length) {
+                    onSelect(results[selectedIndex].id, results[selectedIndex].content);
                 }
             } else if (e.key === 'Escape') {
                 e.preventDefault();
@@ -60,10 +60,10 @@ export const InlineSearchPopup: React.FC<InlineSearchPopupProps> = ({ query, pos
                     key={node.id}
                     className={`px-3 py-2 text-sm cursor-pointer truncate ${index === selectedIndex ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-50 text-gray-700'
                         }`}
-                    onClick={() => onSelect(node.id)}
+                    onClick={() => onSelect(node.id, node.content)}
                     onMouseEnter={() => setSelectedIndex(index)}
                 >
-                    {node.content}
+                    <div className="font-medium text-gray-800 truncate">{node.content || 'Empty Node'}</div>
                 </div>
             ))}
         </div>

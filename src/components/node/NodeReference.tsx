@@ -4,9 +4,10 @@ import type { NodeId } from '@/types/outliner';
 
 interface NodeReferenceProps {
     nodeId: NodeId;
+    children?: React.ReactNode;
 }
 
-export const NodeReference: React.FC<NodeReferenceProps> = ({ nodeId }) => {
+export const NodeReference: React.FC<NodeReferenceProps> = ({ nodeId, children }) => {
     // Select specific node content to avoid re-rendering entire tree
     // We use a selector. 
     // Is zustand selector stable? Yes.
@@ -33,8 +34,8 @@ export const NodeReference: React.FC<NodeReferenceProps> = ({ nodeId }) => {
         return <span className="text-red-400 bg-red-900/20 px-1 rounded text-xs select-none">Link Broken</span>;
     }
 
-    // Limit length for display
-    const displayContent = nodeContent.length > 30 ? nodeContent.slice(0, 30) + '...' : nodeContent;
+    // If specific label (children) is provided, use it. Otherwise use dynamic node content.
+    const displayContent = children || (nodeContent && nodeContent.length > 30 ? nodeContent.slice(0, 30) + '...' : nodeContent);
     const finalContent = displayContent || "Empty Node";
 
     return (

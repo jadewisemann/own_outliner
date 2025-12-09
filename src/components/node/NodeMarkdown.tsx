@@ -8,7 +8,9 @@ interface NodeMarkdownProps {
 }
 
 // Regex to capture ((UUID)) - supporting standard UUID format or simpler ids
-const BLOCK_REF_REGEX = /(\(\([a-zA-Z0-9-]+\)\))/g;
+// Use negative lookbehind to avoid matching ((UUID)) if it is part of a markdown link like [label](((UUID)))
+// Note: Lookbehind support in JS regex is generally good in modern envs.
+const BLOCK_REF_REGEX = /(?<!\]\(|\]\(\()(\(\([a-zA-Z0-9-]+\)\))/g;
 
 export const NodeMarkdown: React.FC<NodeMarkdownProps> = ({ content }) => {
     if (!content || content.trim() === '') {
@@ -22,7 +24,7 @@ export const NodeMarkdown: React.FC<NodeMarkdownProps> = ({ content }) => {
         <span className="oo-node-markdown-wrapper">
             {parts.map((part, index) => {
                 if (BLOCK_REF_REGEX.test(part)) {
-                    // It's a block ref: ((id))
+                    // It's a naked block ref: ((id))
                     const id = part.slice(2, -2); // Remove (( and ))
                     return <NodeReference key={index} nodeId={id} />;
                 }
@@ -37,7 +39,21 @@ export const NodeMarkdown: React.FC<NodeMarkdownProps> = ({ content }) => {
                             remarkPlugins={[remarkGfm]}
                             components={{
                                 p: ({ node, ...props }) => <p className="oo-markdown-p m-0 inline" {...props} />, // Render P as inline for flow
-                                a: ({ node, ...props }) => <a className="oo-markdown-link text-blue-500 hover:underline pointer-events-auto" onClick={e => e.stopPropagation()} target="_blank" rel="noopener noreferrer" {...props} />,
+                                a: ({ node, href, children, ...props }) => {
+                                    // Check if href is an internal link ((UUID))
+                                    const internalMatch = href?.match(/^\(\(([a-zA-Z0-9-]+\))\)$/);
+                                    if (internalMatch) {
+                                        // actually regex captured ((id)) inside parens?
+                                        // href is ((id)). regex is ^\(\((id)\)\)$. 
+                                        // Let's simpler: check starts with (( ends with ))
+                                        if (href?.startsWith('((') && href?.endsWith('))')) {
+                                            const id = href.slice(2, -2);
+                                            return <NodeReference nodeId={id}>{children}</NodeReference>;
+                                        }
+                                    }
+
+                                    return <a className="oo-markdown-link text-blue-500 hover:underline pointer-events-auto" onClick={e => e.stopPropagation()} target="_blank" rel="noopener noreferrer" href={href} {...props}>{children}</a>
+                                },
                                 h1: ({ node, ...props }) => <h1 className="oo-markdown-h1 text-xl font-bold mt-2 mb-1 text-gray-900 inline-block" {...props} />,
                                 h2: ({ node, ...props }) => <h2 className="oo-markdown-h2 text-lg font-bold mt-2 mb-1 text-gray-800 inline-block" {...props} />,
                                 h3: ({ node, ...props }) => <h3 className="oo-markdown-h3 text-base font-bold mt-1 mb-1 text-gray-800 inline-block" {...props} />,
