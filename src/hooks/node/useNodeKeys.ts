@@ -162,15 +162,18 @@ const handleEditMode = (
     if (executeIfMatch(e, keys.indentNode, () => state.indentNodes([id]))) return;
     if (executeIfMatch(e, keys.outdentNode, () => state.outdentNodes([id]))) return;
 
-    if (executeIfMatch(e, keys.mergeNode, () => {
+    if (isMatch(e, keys.mergeNode)) {
+        // Only if at start
         if (inputRef.current && inputRef.current.selectionStart === 0 && inputRef.current.selectionEnd === 0) {
+            e.preventDefault();
             if (node.content.length === 0) {
                 state.deleteNode(id);
             } else {
                 state.mergeNode(id);
             }
         }
-    })) return;
+        return;
+    }
 
     if (isMatch(e, keys.deleteNode)) {
         if (node.content.length === 0) {
@@ -180,11 +183,13 @@ const handleEditMode = (
         return;
     }
 
-    if (executeIfMatch(e, keys.selectAll, () => {
+    if (isMatch(e, keys.selectAll)) {
         if (inputRef.current && inputRef.current.selectionStart === 0 && inputRef.current.selectionEnd === inputRef.current.value.length) {
+            e.preventDefault();
             state.expandSelection(id);
         }
-    })) return;
+        return;
+    }
 
     if (executeIfMatch(e, keys.deleteLine, () => state.deleteNodes([id]))) return;
 
