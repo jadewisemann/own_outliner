@@ -22,25 +22,25 @@ function App() {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  // Scroll to focused node OR flashed node
+  const flashId = useOutlinerStore((state) => state.flashId);
 
-  // Scroll to focused node if needed
   useEffect(() => {
-    if (focusedId && flatNodes.length > 0) {
-      const index = flatNodes.findIndex(n => n.id === focusedId);
+    const targetId = flashId || focusedId;
+
+    if (targetId && flatNodes.length > 0) {
+      const index = flatNodes.findIndex(n => n.id === targetId);
       if (index !== -1) {
-        // Use setTimeout to ensure render cycle complete?
-        // Virtuoso handles this well usually.
-        virtuosoRef.current?.scrollIntoView({
-          index,
-          behavior: 'auto',
-          done: () => {
-            // Optional: Focus logic is handled in NodeItem handles this, but we can ensure it here?
-            // NodeItem does it.
-          }
+        requestAnimationFrame(() => {
+          virtuosoRef.current?.scrollToIndex({
+            index,
+            align: 'center',
+            behavior: 'smooth',
+          });
         });
       }
     }
-  }, [focusedId, flatNodes]); // flatNodes dependency ensures we scroll after expansion updates list
+  }, [focusedId, flashId, flatNodes]); // Add flashId dependency
 
   // Global Keybindings
   useEffect(() => {
