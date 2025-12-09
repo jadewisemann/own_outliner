@@ -18,3 +18,17 @@
   .oo-node-selected   - Applied when node is selected
   .oo-node-focused    - Applied when node is focused
 */
+
+/*
+  Markdown Elements 
+    .oo-markdown-p - Paragraph
+    .oo-markdown-h1 - Heading 1 
+    .oo-markdown-h2 - Heading 2 
+    .oo-markdown-h3 - Heading 3
+    .oo-markdown-link - Links
+    .oo-markdown-bold - Bold text
+    .oo-markdown-italic - Italic text
+    .oo-markdown-strike - Strikethrough text
+    .oo-markdown-code - Inline code
+    .oo-markdown-blockquote - Blockquote
+*/
