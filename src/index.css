@@ -1,1 +1,20 @@
 @import "tailwindcss";
+
+/* 
+  Own Outliner Design System (OO-DS)
+  
+  Semantic classes are added to allow side-loading of custom themes.
+  Prefix: oo-
+  
+  Structure:
+  .oo-app-container   - Main app wrapper
+  .oo-header          - Top header area
+  .oo-toolbar         - Toolbar area
+  .oo-main            - Main content area
+  
+  .oo-node-item       - Node row container
+  .oo-node-bullet     - Bullet point container
+  .oo-node-content    - Content wrapper
+  .oo-node-selected   - Applied when node is selected
+  .oo-node-focused    - Applied when node is focused
+*/

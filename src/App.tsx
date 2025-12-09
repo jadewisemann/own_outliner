@@ -59,12 +59,12 @@ function App() {
   if (!rootNode) return <div className="p-10">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 p-10 max-w-4xl mx-auto">
-      <header className="mb-8 border-b pb-4 flex justify-between items-center">
+    <div className="oo-app-container min-h-screen bg-white text-gray-900 p-10 max-w-4xl mx-auto">
+      <header className="oo-header mb-8 border-b pb-4 flex justify-between items-center">
         <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-teal-400">
           Own Outliner
         </h1>
-        <div className="flex gap-2">
+        <div className="oo-toolbar flex gap-2">
           <button
             className="px-3 py-1.5 rounded text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors flex items-center gap-2"
             onClick={() => setIsSearchOpen(true)}
@@ -81,7 +81,7 @@ function App() {
         </div>
       </header>
 
-      <main className="pl-2">
+      <main className="oo-main pl-2">
         {hoistedNodeId && (
           <div className="mb-4 text-sm text-gray-500 flex items-center gap-1">
             <span className="cursor-pointer hover:underline" onClick={() => setHoistedNode(null)}>Root</span>

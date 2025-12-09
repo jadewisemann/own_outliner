@@ -466,7 +466,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
     if (!shouldRender) return null;
 
     return (
-        <div className={`flex flex-col select-none ${isSelected ? 'bg-blue-100 rounded' : ''}`}>
+        <div className={`oo-node-item flex flex-col select-none ${isSelected ? 'oo-node-selected bg-blue-100 rounded' : ''} ${focusedId === id ? 'oo-node-focused' : ''}`}>
             {/* Node Row */}
             <div
                 ref={containerRef}
@@ -476,7 +476,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                 onKeyDown={handleKeyDown}
             >
                 {/* Bullet / Toggle */}
-                <div className="w-6 h-6 flex items-center justify-center mr-1 cursor-pointer text-gray-400 hover:text-gray-600 relative group/bullet">
+                <div className="oo-node-bullet w-6 h-6 flex items-center justify-center mr-1 cursor-pointer text-gray-400 hover:text-gray-600 relative group/bullet">
                     {/* Zoom Button (only visible on hover) */}
                     <div
                         className="absolute right-full mr-1 opacity-0 group-hover/bullet:opacity-100 transition-opacity p-0.5 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-600"
@@ -499,7 +499,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 min-w-0" onClick={(e) => {
+                <div className="oo-node-content flex-1 min-w-0" onClick={(e) => {
                     // Click on container handles focus if not input
                     e.stopPropagation();
                     useOutlinerStore.getState().deselectAll();
