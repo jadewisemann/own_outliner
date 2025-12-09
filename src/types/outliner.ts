@@ -58,6 +58,7 @@ export interface OutlinerState {
     deleteNode: (id: NodeId) => void;
     updateContent: (id: NodeId, content: string) => void;
     setFocus: (id: NodeId | null, cursorPos?: number | null) => void;
+    navigateToNode: (id: NodeId) => void; // Added
     toggleCollapse: (id: NodeId) => void;
     indentNode: (id: NodeId) => void;
     outdentNode: (id: NodeId) => void;

@@ -8,6 +8,7 @@ import { createNodeSlice } from '@/store/slices/nodeSlice';
 import { createSelectionSlice } from '@/store/slices/selectionSlice';
 import { createFocusSlice } from '@/store/slices/focusSlice';
 import { createSettingsSlice } from '@/store/slices/settingsSlice';
+import { createNavigationSlice } from '@/store/slices/navigationSlice';
 
 const defaultSettings = {
     splitBehavior: 'auto' as const,
@@ -22,6 +23,7 @@ export const useOutlinerStore = create<OutlinerState>()(
                 ...createSelectionSlice(...a),
                 ...createFocusSlice(...a),
                 ...createSettingsSlice(...a),
+                ...createNavigationSlice(...a),
             }),
             {
                 name: 'outliner-storage',
