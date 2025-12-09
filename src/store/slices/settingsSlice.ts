@@ -6,6 +6,7 @@ import { defaultKeybindings } from '@/utils/keybindings';
 export interface SettingsSlice {
     settings: {
         splitBehavior: 'auto' | 'sibling' | 'child';
+        linkClickBehavior: 'edit' | 'select';
         keybindings: Record<KeyAction, Keybinding>;
     };
     setSetting: <K extends keyof SettingsSlice['settings']>(key: K, value: SettingsSlice['settings'][K]) => void;
@@ -15,6 +16,7 @@ export interface SettingsSlice {
 
 const defaultSettings = {
     splitBehavior: 'auto' as const,
+    linkClickBehavior: 'edit' as const,
     keybindings: defaultKeybindings as Record<KeyAction, Keybinding>,
 };
 

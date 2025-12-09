@@ -43,6 +43,7 @@ export type KeyAction =
 
 export interface OutlinerSettings {
     splitBehavior: 'sibling' | 'child' | 'auto';
+    linkClickBehavior: 'edit' | 'select'; // 'edit' = focus input, 'select' = regular selection
     keybindings: Record<KeyAction, Keybinding>;
 }
 
@@ -52,6 +53,8 @@ export interface OutlinerState {
     focusedId: NodeId | null;
     hoistedNodeId: NodeId | null;
     focusCursorPos: number | null;
+    flashId: NodeId | null;
+    backlinks: Record<NodeId, NodeId[]>; // TargetID -> SourceIDs
 
     // Actions
     addNode: (parentId: NodeId | null, index?: number) => void;
@@ -59,6 +62,7 @@ export interface OutlinerState {
     updateContent: (id: NodeId, content: string) => void;
     setFocus: (id: NodeId | null, cursorPos?: number | null) => void;
     navigateToNode: (id: NodeId) => void; // Added
+    setFlashId: (id: NodeId | null) => void;
     toggleCollapse: (id: NodeId) => void;
     indentNode: (id: NodeId) => void;
     outdentNode: (id: NodeId) => void;

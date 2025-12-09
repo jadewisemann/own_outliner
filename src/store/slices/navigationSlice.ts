@@ -3,9 +3,11 @@ import type { OutlinerState, NodeId } from '@/types/outliner';
 
 export interface NavigationSlice {
     navigateToNode: (id: NodeId) => void;
+    setFlashId: (id: NodeId | null) => void;
 }
 
 export const createNavigationSlice: StateCreator<OutlinerState, [], [], NavigationSlice> = (set, get) => ({
+    setFlashId: (id) => set({ flashId: id }),
     navigateToNode: (id: NodeId) => {
         const state = get();
         const targetNode = state.nodes[id];
@@ -61,13 +63,22 @@ export const createNavigationSlice: StateCreator<OutlinerState, [], [], Navigati
             }
         }
 
-        // 4. Focus the node
-        // We use setFocus (from focusSlice)
-        get().setFocus(id, 0); // Focus at start? or maybe select generic?
+        // 4. Focus or Select based on settings
+        const behavior = state.settings.linkClickBehavior || 'edit';
 
-        // TODO: Scroll into view?
-        // This usually requires refs in the DOM. 
-        // We can expose a "scrollRequest" in state that the virtualization layer listens to.
-        // For now, focus might handle basic scrolling if using standard inputs, but virtual list might not render it yet.
+        if (behavior === 'select') {
+            get().selectNode(id);
+        } else {
+            get().setFocus(id, 0);
+        }
+
+        // 5. Trigger Flash
+        get().setFlashId(id);
+        setTimeout(() => {
+            // Check if still same (avoid clearing new flash)
+            if (get().flashId === id) {
+                get().setFlashId(null);
+            }
+        }, 2000);
     }
 });

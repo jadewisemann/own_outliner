@@ -3,6 +3,7 @@ import type { NodeId } from '@/types/outliner';
 import { useNodeLogic } from '@/hooks/node/useNodeLogic';
 import { NodeInput } from './NodeInput';
 import { NodeMarkdown } from './NodeMarkdown';
+import { NodeBacklinksIndicator } from './NodeBacklinksIndicator';
 
 interface NodeContentProps {
     id: NodeId;
@@ -33,6 +34,7 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id, inputRef, onPaste 
             ) : (
                 <div className={`prose prose-sm max-w-none leading-normal text-gray-800 pointer-events-none ${node.content.trim() === '' ? 'h-6' : ''}`}>
                     <NodeMarkdown content={node.content} />
+                    <NodeBacklinksIndicator id={id} />
                 </div>
             )}
         </div>

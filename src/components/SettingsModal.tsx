@@ -101,6 +101,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
                 <div className="flex-1 overflow-y-auto p-6">
                     <div className="mb-8">
+                        <h3 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">General</h3>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <span className="text-gray-700 font-medium">Link Click Behavior</span>
+                                <div className="flex bg-gray-100 p-1 rounded-lg">
+                                    <button
+                                        onClick={() => useOutlinerStore.getState().setSetting('linkClickBehavior', 'edit')}
+                                        className={`px-3 py-1.5 text-sm rounded-md transition-all ${settings.linkClickBehavior === 'edit'
+                                                ? 'bg-white text-blue-600 shadow-sm font-medium'
+                                                : 'text-gray-500 hover:text-gray-700'
+                                            }`}
+                                    >
+                                        Edit (Focus)
+                                    </button>
+                                    <button
+                                        onClick={() => useOutlinerStore.getState().setSetting('linkClickBehavior', 'select')}
+                                        className={`px-3 py-1.5 text-sm rounded-md transition-all ${settings.linkClickBehavior === 'select'
+                                                ? 'bg-white text-blue-600 shadow-sm font-medium'
+                                                : 'text-gray-500 hover:text-gray-700'
+                                            }`}
+                                    >
+                                        Navigate (Select)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="mb-8">
                         <h3 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">Keybindings</h3>
                         <div className="grid grid-cols-1 gap-2">
                             {(Object.keys(ACTION_LABELS) as KeyAction[]).map((action) => (

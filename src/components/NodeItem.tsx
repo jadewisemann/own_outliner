@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import type { NodeId } from '@/types/outliner';
 import { useNodeLogic } from '@/hooks/node/useNodeLogic';
 import { useNodeKeys } from '@/hooks/node/useNodeKeys';
+import { useOutlinerStore } from '@/store/useOutlinerStore';
 import { NodeBullet } from './node/NodeBullet';
 import { NodeContent } from './node/NodeContent';
 
@@ -18,6 +19,9 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
         focusCursorPos,
         updateContent
     } = useNodeLogic(id);
+
+    // Flash State Subscription
+    const isFlashed = useOutlinerStore((state) => state.flashId === id);
 
     const inputRef = useRef<HTMLInputElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -57,14 +61,11 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
 
         e.preventDefault();
 
-        // Dynamic import to avoid circular dependency or huge bundle load if not needed often
         const { parseIndentedText } = await import('@/utils/clipboard');
         const parsed = parseIndentedText(text);
 
         if (parsed.length === 0) return;
 
-        // Use direct store access to avoid re-rendering NodeItem on every tree change
-        // We need to import useOutlinerStore for this.
         const { useOutlinerStore } = await import('@/store/useOutlinerStore');
         const state = useOutlinerStore.getState();
 
@@ -85,7 +86,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
             <div
                 ref={containerRef}
                 tabIndex={-1}
-                className="flex items-center group py-1 relative outline-none"
+                className={`flex items-center group py-1 relative outline-none transition-colors duration-500 ${isFlashed ? 'bg-yellow-200/50' : ''}`}
                 style={{ paddingLeft: `${level * 20}px` }}
                 onKeyDown={handleKeyDown}
             >

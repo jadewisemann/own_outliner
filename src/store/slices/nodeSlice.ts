@@ -177,15 +177,51 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
     },
 
     updateContent: (id, content) => {
-        set((state) => ({
-            nodes: {
-                ...state.nodes,
-                [id]: {
-                    ...state.nodes[id],
-                    content,
+        set((state) => {
+            const oldNode = state.nodes[id];
+            if (!oldNode) return state;
+
+            // Backlinks Indexing Logic
+            const extractIDs = (text: string) => {
+                const regex = /\(\(([a-zA-Z0-9-]+)\)\)/g;
+                return [...text.matchAll(regex)].map(m => m[1]);
+            };
+
+            const oldLinks = extractIDs(oldNode.content);
+            const newLinks = extractIDs(content);
+
+            const addedLinks = newLinks.filter(x => !oldLinks.includes(x));
+            const removedLinks = oldLinks.filter(x => !newLinks.includes(x));
+
+            const newBacklinks = { ...state.backlinks };
+            // Ensure no undefined
+
+            // Remove
+            removedLinks.forEach(targetId => {
+                const current = newBacklinks[targetId] || [];
+                newBacklinks[targetId] = current.filter(sourceId => sourceId !== id);
+                if (newBacklinks[targetId].length === 0) delete newBacklinks[targetId];
+            });
+
+            // Add
+            addedLinks.forEach(targetId => {
+                const current = newBacklinks[targetId] || [];
+                if (!current.includes(id)) {
+                    newBacklinks[targetId] = [...current, id];
+                }
+            });
+
+            return {
+                nodes: {
+                    ...state.nodes,
+                    [id]: {
+                        ...oldNode,
+                        content,
+                    },
                 },
-            },
-        }));
+                backlinks: newBacklinks,
+            };
+        });
     },
 
     toggleCollapse: (id) => {
