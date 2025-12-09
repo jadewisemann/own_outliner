@@ -51,23 +51,30 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
         }
     }, [isFocused, isSelected, focusCursorPos]);
 
-    const handlePaste = (e: React.ClipboardEvent) => {
+    const handlePaste = async (e: React.ClipboardEvent) => {
         const text = e.clipboardData.getData('text');
-        if (text.includes('\n')) {
-            e.preventDefault();
-            import('@/utils/clipboard').then(({ parseIndentedText }) => {
-                const parsed = parseIndentedText(text);
-                if (parsed.length > 0) {
-                    import('@/store/useOutlinerStore').then(({ useOutlinerStore }) => {
-                        const state = useOutlinerStore.getState();
-                        const parent = state.nodes[node.parentId || ''];
-                        if (parent) {
-                            const index = parent.children.indexOf(id) + 1;
-                            state.pasteNodes(parent.id, index, parsed);
-                        }
-                    });
-                }
-            });
+        if (!text.includes('\n')) return;
+
+        e.preventDefault();
+
+        // Dynamic import to avoid circular dependency or huge bundle load if not needed often
+        const { parseIndentedText } = await import('@/utils/clipboard');
+        const parsed = parseIndentedText(text);
+
+        if (parsed.length === 0) return;
+
+        // Use direct store access to avoid re-rendering NodeItem on every tree change
+        // We need to import useOutlinerStore for this.
+        const { useOutlinerStore } = await import('@/store/useOutlinerStore');
+        const state = useOutlinerStore.getState();
+
+        const parentId = node.parentId;
+        if (!parentId) return;
+
+        const parent = state.nodes[parentId];
+        if (parent) {
+            const index = parent.children.indexOf(id) + 1;
+            state.pasteNodes(parent.id, index, parsed);
         }
     };
 

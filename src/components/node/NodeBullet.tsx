@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronRight, ChevronDown, ZoomIn } from 'lucide-react';
-import type { NodeId, NodeData } from '@/types/outliner';
+import type { NodeId } from '@/types/outliner';
 import { useNodeLogic } from '@/hooks/node/useNodeLogic';
 
 interface NodeBulletProps {
