@@ -56,6 +56,7 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [settings.keybindings]);
 
+  // TODO: Loading state
   if (!rootNode) return <div className="p-10">Loading...</div>;
 
   return (
