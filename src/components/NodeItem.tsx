@@ -151,9 +151,9 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
 
             if (isMatch(e, keys.selectLine)) {
                 e.preventDefault();
-                if (inputRef.current) {
-                    inputRef.current.select();
-                }
+                // Already selected, ensures single selection if multi was active?
+                // Or maybe expand selection logic? For now, re-select ensures it's the anchor.
+                selectNode(id, false);
                 return;
             }
 
@@ -362,9 +362,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ id, level = 0 }) => {
 
             if (isMatch(e, keys.selectLine)) {
                 e.preventDefault();
-                if (inputRef.current) {
-                    inputRef.current.select();
-                }
+                selectNode(id, false); // Select current node
                 return;
             }
 
