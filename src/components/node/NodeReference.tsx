@@ -15,8 +15,11 @@ export const NodeReference: React.FC<NodeReferenceProps> = ({ nodeId }) => {
     const state = useOutlinerStore.getState();
 
     const handleClick = (e: React.MouseEvent) => {
+        // Critical: Stop propagation to prevent NodeItem selection
         e.preventDefault();
         e.stopPropagation();
+
+        console.log('Link clicked:', nodeId);
 
         if (state.navigateToNode) {
             state.navigateToNode(nodeId);
@@ -38,10 +41,8 @@ export const NodeReference: React.FC<NodeReferenceProps> = ({ nodeId }) => {
         <span
             onClick={handleClick}
             className="
-                inline-flex items-center mx-1 px-1.5 py-0.5 rounded
-                bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300
-                cursor-pointer transition-colors text-sm
-                border border-blue-500/20 select-none
+                text-blue-600 hover:text-blue-800 underline decoration-blue-300/50 hover:decoration-blue-800
+                cursor-pointer hover:bg-blue-50 rounded px-0.5 -mx-0.5 transition-colors
             "
             title={`Link to: ${nodeContent}`}
         >
