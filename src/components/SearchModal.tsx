@@ -47,44 +47,36 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
         if (e.key === 'ArrowDown') {
             e.preventDefault();
             setSelectedIndex(prev => Math.min(prev + 1, results.length - 1));
-        } else if (e.key === 'ArrowUp') {
+            return;
+        }
+
+        if (e.key === 'ArrowUp') {
             e.preventDefault();
             setSelectedIndex(prev => Math.max(prev - 1, 0));
-        } else if (e.key === 'Enter') {
+            return;
+        }
+
+        if (e.key === 'Enter') {
             e.preventDefault();
             if (results.length > 0 && results[selectedIndex]) {
                 const target = results[selectedIndex];
                 selectResult(target.id);
             }
-        } else if (e.key === 'Escape') {
+            return;
+        }
+
+        if (e.key === 'Escape') {
             e.preventDefault();
             onClose();
+            return;
         }
     };
 
     const selectResult = (id: NodeId) => {
-        // If the node is hidden (collapsed parent), we might need to expand parents?
-        // Or if it's outside the hoisted view?
-        // Basic implementation: Unhoist if necessary (or check), ensure visible, set focus.
-
-        // For MVP: Just set focus. The user might need to unhoist manually if it's not visible, 
-        // OR we specifically unhoist to root to be safe.
-        // Better: Find path to root, check if any parent is hoisted.
-
-        // Let's just setHoistedNode(null) to be safe for now (Jump to global context),
-        // or keep current context if it's within it. 
-        // Simplest: setHoistedNode(null) + setFocus(id).
         setHoistedNode(null);
-
-        // Also ensure parents are expanded so node is visible? 
-        // Store actions needed: expandParents(id).
-        // For now, let's just focus. The Virtualized List filters visible nodes.
-        // If parent is collapsed, node won't be in flatNodes list -> Virtuoso won't render -> NodeItem won't mount -> Auto-focus useEffect won't run.
-        // SO WE MUST EXPAND PARENTS.
 
         expandParents(id);
 
-        // Delay focus slightly to allow render?
         setTimeout(() => {
             setFocus(id, 0); // Focus at start
         }, 0);
@@ -92,12 +84,6 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
         onClose();
     };
 
-    // Helper to expand parents
-    // We can't access store actions easily unless we expose a new action or manual logic here.
-    // Let's do manual logic update? No, antipattern to mutate state directly.
-    // We need an action `revealNode(id)` in store.
-    // Or just iterate parents here and call `toggleCollapse` if collapsed?
-    // Accessing `nodes` state directly is fine for reading.
     const expandParents = (targetId: NodeId) => {
         let current = nodes[targetId];
         const parentsToExpand: NodeId[] = [];
@@ -110,12 +96,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
             current = parent;
         }
 
-        // We can call `toggleCollapse` for each, but that triggers multiple renders.
-        // Ideally we add `expandPathToNode` in store.
-        // For now, loop.
         const store = useOutlinerStore.getState();
         parentsToExpand.forEach(pid => {
-            // Check again in case state changed (unlikely in sync loop)
             if (store.nodes[pid].isCollapsed) {
                 store.toggleCollapse(pid);
             }

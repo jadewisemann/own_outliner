@@ -26,21 +26,18 @@ export const parseIndentedText = (text: string): TempNode[] => {
     const root: TempNode = { content: 'root', children: [] };
     const stack: { node: TempNode, level: number }[] = [{ node: root, level: -1 }];
 
-    lines.forEach(line => {
+    for (const line of lines) {
         // Detect indent
         const match = line.match(/^(\s*)(?:-\s+)?(.*)/);
-        if (!match) return;
+        if (!match) continue;
 
         const indentStr = match[1];
         const content = match[2];
 
         // Calculate level (assuming 1 tab or 2 spaces = 1 level)
-        let level = 0;
-        if (indentStr.includes('\t')) {
-            level = indentStr.length;
-        } else {
-            level = Math.floor(indentStr.length / 2);
-        }
+        const level = indentStr.includes('\t')
+            ? indentStr.length
+            : Math.floor(indentStr.length / 2);
 
         const newNode: TempNode = { content, children: [] };
 
@@ -52,7 +49,7 @@ export const parseIndentedText = (text: string): TempNode[] => {
         const parent = stack[stack.length - 1].node;
         parent.children.push(newNode);
         stack.push({ node: newNode, level });
-    });
+    }
 
     return root.children;
 };
