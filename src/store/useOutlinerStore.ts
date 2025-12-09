@@ -12,6 +12,7 @@ import { createNavigationSlice } from '@/store/slices/navigationSlice';
 
 const defaultSettings = {
     splitBehavior: 'auto' as const,
+    linkClickBehavior: 'edit' as const,
     keybindings: defaultKeybindings,
 };
 
@@ -24,10 +25,12 @@ export const useOutlinerStore = create<OutlinerState>()(
                 ...createFocusSlice(...a),
                 ...createSettingsSlice(...a),
                 ...createNavigationSlice(...a),
+                flashId: null,
+                backlinks: {},
             }),
             {
                 name: 'outliner-storage',
-                version: 5,
+                version: 6,
                 migrate: (persistedState: unknown, version: number) => {
                     let state = persistedState as OutlinerState;
                     if (version === 0) {
@@ -102,6 +105,27 @@ export const useOutlinerStore = create<OutlinerState>()(
                         };
                         if (!state.settings.keybindings.undo) state.settings.keybindings.undo = defaultKeybindings.undo;
                         if (!state.settings.keybindings.redo) state.settings.keybindings.redo = defaultKeybindings.redo;
+                    }
+
+                    if (version < 6) {
+                        // Rebuild backlinks index
+                        const backlinks: Record<string, string[]> = {};
+                        if (state.nodes) {
+                            Object.values(state.nodes).forEach(node => {
+                                const regex = /\(\(([a-zA-Z0-9-]+)\)\)/g;
+                                const matches = [...node.content.matchAll(regex)].map(m => m[1]);
+                                matches.forEach(targetId => {
+                                    if (!backlinks[targetId]) backlinks[targetId] = [];
+                                    if (!backlinks[targetId].includes(node.id)) {
+                                        backlinks[targetId].push(node.id);
+                                    }
+                                });
+                            });
+                        }
+                        state = {
+                            ...state,
+                            backlinks
+                        };
                     }
 
                     return state;
