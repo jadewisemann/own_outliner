@@ -43,6 +43,7 @@ export const NodeReference: React.FC<NodeReferenceProps> = ({ nodeId }) => {
             className="
                 text-blue-600 hover:text-blue-800 underline decoration-blue-300/50 hover:decoration-blue-800
                 cursor-pointer hover:bg-blue-50 rounded px-0.5 -mx-0.5 transition-colors
+                pointer-events-auto
             "
             title={`Link to: ${nodeContent}`}
         >
