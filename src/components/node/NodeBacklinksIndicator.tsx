@@ -10,7 +10,7 @@ export const NodeBacklinksIndicator: React.FC<{ id: NodeId }> = ({ id }) => {
     const navigateToNode = useOutlinerStore(state => state.navigateToNode);
 
     const [showPopup, setShowPopup] = useState(false);
-    const [popupTop, setPopupTop] = useState(0);
+    const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({});
     const buttonRef = useRef<HTMLButtonElement>(null);
     const popupRef = useRef<HTMLDivElement>(null);
 
@@ -18,7 +18,25 @@ export const NodeBacklinksIndicator: React.FC<{ id: NodeId }> = ({ id }) => {
         e.stopPropagation();
         if (!showPopup && buttonRef.current) {
             const rect = buttonRef.current.getBoundingClientRect();
-            setPopupTop(rect.bottom + 8); // 8px spacing
+            const top = rect.bottom + 4; // 4px spacing
+
+            // Heuristic: If button is past 60% of screen width, align right.
+            const isRightSide = rect.left > window.innerWidth * 0.6;
+
+            const style: React.CSSProperties = {
+                top: top,
+                position: 'fixed',
+            };
+
+            if (isRightSide) {
+                style.right = window.innerWidth - rect.right;
+                style.transformOrigin = 'top right';
+            } else {
+                style.left = rect.left;
+                style.transformOrigin = 'top left';
+            }
+
+            setPopupStyle(style);
             setShowPopup(true);
         } else {
             setShowPopup(false);
@@ -67,12 +85,12 @@ export const NodeBacklinksIndicator: React.FC<{ id: NodeId }> = ({ id }) => {
             {showPopup && createPortal(
                 <div
                     ref={popupRef}
-                    className="fixed z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl w-80 max-h-48 overflow-y-auto left-1/2 -translate-x-1/2 flex flex-col"
-                    style={{ top: popupTop }}
+                    className="fixed z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl w-72 max-h-56 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100"
+                    style={popupStyle}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <div className="bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-500 border-b flex-shrink-0">
-                        Linked from {backlinks.length} notes:
+                    <div className="bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-500 border-b flex-shrink-0 flex justify-between items-center">
+                        <span>Linked from {backlinks.length} notes</span>
                     </div>
                     <div className="overflow-y-auto">
                         {backlinks.map(sourceId => {
