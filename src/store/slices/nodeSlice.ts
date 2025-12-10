@@ -79,6 +79,7 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
             const node = state.nodes[id];
             if (!node || !node.parentId) return state;
 
+            // ... (Focus logic) ...
             const parent = state.nodes[node.parentId];
             const index = parent.children.indexOf(id);
 
@@ -98,8 +99,29 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
                 }
             }
 
+            const newBacklinks = { ...state.backlinks };
+
+            // Helper for ID extraction (inline to avoid complexity)
+            const extractIDs = (text: string) => {
+                const ids: string[] = [];
+                for (const match of text.matchAll(/\(\(([a-zA-Z0-9-]+)\)\)/g)) ids.push(match[1]);
+                // Match [Label](ID) where ID is alphanumeric+dash (no protocol, no dots)
+                for (const match of text.matchAll(/\[[^\]]*\]\(([a-zA-Z0-9-]+)\)/g)) ids.push(match[1]);
+                return [...new Set(ids)];
+            };
+
             const deleteRecursively = (targetId: NodeId, nodesMap: Record<NodeId, NodeData>) => {
                 const target = nodesMap[targetId];
+
+                // Cleanup backlinks for THIS node being deleted
+                const links = extractIDs(target.content || '');
+                links.forEach(linkedId => {
+                    if (newBacklinks[linkedId]) {
+                        newBacklinks[linkedId] = newBacklinks[linkedId].filter(sid => sid !== targetId);
+                        if (newBacklinks[linkedId].length === 0) delete newBacklinks[linkedId];
+                    }
+                });
+
                 if (target && target.children) {
                     target.children.forEach(childId => deleteRecursively(childId, nodesMap));
                 }
@@ -120,7 +142,8 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
             return {
                 nodes: newNodes,
                 focusedId: nextFocusId,
-                selectedIds: newSelectedIds
+                selectedIds: newSelectedIds,
+                backlinks: newBacklinks
             };
         });
     },
@@ -145,8 +168,28 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
                 }
             }
 
+            const newBacklinks = { ...state.backlinks };
+            // Helper for ID extraction (inline to avoid complexity)
+            const extractIDs = (text: string) => {
+                const ids: string[] = [];
+                for (const match of text.matchAll(/\(\(([a-zA-Z0-9-]+)\)\)/g)) ids.push(match[1]);
+                // Match [Label](ID) where ID is alphanumeric+dash (no protocol, no dots)
+                for (const match of text.matchAll(/\[[^\]]*\]\(([a-zA-Z0-9-]+)\)/g)) ids.push(match[1]);
+                return [...new Set(ids)];
+            };
+
             const deleteRecursively = (targetId: NodeId) => {
                 const target = newNodes[targetId];
+
+                // Backlinks cleanup
+                const links = extractIDs(target.content || '');
+                links.forEach(linkedId => {
+                    if (newBacklinks[linkedId]) {
+                        newBacklinks[linkedId] = newBacklinks[linkedId].filter(sid => sid !== targetId);
+                        if (newBacklinks[linkedId].length === 0) delete newBacklinks[linkedId];
+                    }
+                });
+
                 if (target && target.children) {
                     target.children.forEach(childId => deleteRecursively(childId));
                 }
@@ -171,20 +214,25 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
             return {
                 nodes: newNodes,
                 selectedIds: [],
-                focusedId: (state.focusedId && ids.includes(state.focusedId)) ? nextFocusId : state.focusedId
+                focusedId: (state.focusedId && ids.includes(state.focusedId)) ? nextFocusId : state.focusedId,
+                backlinks: newBacklinks
             };
         });
     },
 
+    // ... updateContent ...
     updateContent: (id, content) => {
         set((state) => {
             const oldNode = state.nodes[id];
             if (!oldNode) return state;
 
-            // Backlinks Indexing Logic
+            // Updated Extract Logic
             const extractIDs = (text: string) => {
-                const regex = /\(\(([a-zA-Z0-9-]+)\)\)/g;
-                return [...text.matchAll(regex)].map(m => m[1]);
+                const ids: string[] = [];
+                for (const match of text.matchAll(/\(\(([a-zA-Z0-9-]+)\)\)/g)) ids.push(match[1]);
+                // Match [Label](ID) where ID is alphanumeric+dash (no protocol, no dots)
+                for (const match of text.matchAll(/\[[^\]]*\]\(([a-zA-Z0-9-]+)\)/g)) ids.push(match[1]);
+                return [...new Set(ids)];
             };
 
             const oldLinks = extractIDs(oldNode.content);
@@ -194,7 +242,6 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
             const removedLinks = oldLinks.filter(x => !newLinks.includes(x));
 
             const newBacklinks = { ...state.backlinks };
-            // Ensure no undefined
 
             // Remove
             removedLinks.forEach(targetId => {
@@ -448,7 +495,6 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
             };
         });
     },
-
     mergeNode: (id) => {
         set((state) => {
             const node = state.nodes[id];
@@ -464,7 +510,58 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
             const prevSiblingId = parent.children[index - 1];
             const prevSibling = state.nodes[prevSiblingId];
 
+            // Should I run updateContent logic?
+            // Merging: prevSibling.content becomes prevSibling.content + node.content
+            // node is DELETED.
+            // So:
+            // 1. node's links to others -> must transfer to prevSibling (since content moves)?
+            //    Actually, if I copy content, `updateContent(prevSiblingId, newContent)` will register the links for prevSibling.
+            //    BUT, `node` is deleted. Its backlinks entry (as a source) must be removed.
+            //    The `delete` logic usually handles this.
+            //    Wait, `mergeNode` logic manually deletes `node` from `nodes`.
+            //    It does NOT call `deleteNode`.
+
+            const newBacklinks = { ...state.backlinks };
+            const extractIDs = (text: string) => {
+                const ids: string[] = [];
+                for (const match of text.matchAll(/\(\(([a-zA-Z0-9-]+)\)\)/g)) ids.push(match[1]);
+                // Match [Label](ID) where ID is alphanumeric+dash (no protocol, no dots)
+                for (const match of text.matchAll(/\[[^\]]*\]\(([a-zA-Z0-9-]+)\)/g)) ids.push(match[1]);
+                return [...new Set(ids)];
+            };
+
+            // Remove node (source) from backlinks
+            const nodeLinks = extractIDs(node.content);
+            nodeLinks.forEach(targetId => {
+                if (newBacklinks[targetId]) {
+                    newBacklinks[targetId] = newBacklinks[targetId].filter(sid => sid !== id);
+                    if (newBacklinks[targetId].length === 0) delete newBacklinks[targetId];
+                }
+            });
+
+            // Update prevSibling content -> this logic happens via `updateContent` usually, but here manual?
+            // Ah, mergeNode logic currently updates state manually:
+            // [prevSiblingId]: { ... content: newContent ... }
+            // So I MUST update backlinks for prevSibling too here.
+            // This suggests I should delegate to actions if possible, but inside reducer better manual.
+
+            const prevLinksOld = extractIDs(prevSibling.content);
             const newContent = prevSibling.content + node.content;
+            const prevLinksNew = extractIDs(newContent);
+
+            // Diff for prevSibling
+            const added = prevLinksNew.filter(x => !prevLinksOld.includes(x));
+            const removed = prevLinksOld.filter(x => !prevLinksNew.includes(x));
+
+            removed.forEach(tid => {
+                const cur = newBacklinks[tid] || [];
+                newBacklinks[tid] = cur.filter(sid => sid !== prevSiblingId);
+                if (newBacklinks[tid].length === 0) delete newBacklinks[tid];
+            });
+            added.forEach(tid => {
+                const cur = newBacklinks[tid] || [];
+                if (!cur.includes(prevSiblingId)) newBacklinks[tid] = [...cur, prevSiblingId];
+            });
 
             const childrenUpdates: Record<NodeId, NodeData> = {};
             node.children.forEach(childId => {
@@ -491,6 +588,7 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
                     [parent.id]: { ...parent, children: newParentChildren }
                 },
                 focusedId: prevSiblingId,
+                backlinks: newBacklinks
             };
         });
     }

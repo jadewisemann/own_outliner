@@ -1,22 +1,19 @@
 
 import type { StateCreator } from 'zustand';
-import type { OutlinerState, KeyAction, Keybinding } from '@/types/outliner';
+import type { OutlinerState, KeyAction, Keybinding, OutlinerSettings } from '@/types/outliner';
 import { defaultKeybindings } from '@/utils/keybindings';
 
 export interface SettingsSlice {
-    settings: {
-        splitBehavior: 'auto' | 'sibling' | 'child';
-        linkClickBehavior: 'edit' | 'select';
-        keybindings: Record<KeyAction, Keybinding>;
-    };
-    setSetting: <K extends keyof SettingsSlice['settings']>(key: K, value: SettingsSlice['settings'][K]) => void;
+    settings: OutlinerSettings;
+    setSetting: <K extends keyof OutlinerSettings>(key: K, value: OutlinerSettings[K]) => void;
     setKeybinding: (action: KeyAction, binding: Keybinding) => void;
     resetKeybindings: () => void;
 }
 
-const defaultSettings = {
-    splitBehavior: 'auto' as const,
-    linkClickBehavior: 'edit' as const,
+const defaultSettings: OutlinerSettings = {
+    theme: 'light',
+    splitBehavior: 'auto',
+    linkClickBehavior: 'edit',
     keybindings: defaultKeybindings as Record<KeyAction, Keybinding>,
 };
 

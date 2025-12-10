@@ -42,8 +42,9 @@ export type KeyAction =
     | 'search';
 
 export interface OutlinerSettings {
+    theme: 'light' | 'dark';
     splitBehavior: 'sibling' | 'child' | 'auto';
-    linkClickBehavior: 'edit' | 'select'; // 'edit' = focus input, 'select' = regular selection
+    linkClickBehavior: 'edit' | 'select' | 'navigate'; // 'edit' = focus input, 'select' = regular selection, 'navigate' = follow link
     keybindings: Record<KeyAction, Keybinding>;
 }
 

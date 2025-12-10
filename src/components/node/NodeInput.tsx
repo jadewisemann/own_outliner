@@ -75,8 +75,8 @@ export const NodeInput = forwardRef<HTMLInputElement, NodeInputProps>(
 
                             const value = internalRef.current.value;
                             const before = value.substring(0, triggerIndex); // Use triggerIndex for start
-                            // Standard markdown link format: [Content](((UUID)))
-                            const linkText = `[${selectedContent}](((${selectedId})))`;
+                            // Standard markdown link format: [Content](UUID) - cleaner syntax requested by user
+                            const linkText = `[${selectedContent}](${selectedId})`;
                             // Calculate the length of the matched query part to correctly slice 'after'
                             const matchedQueryLength = popupQuery.length;
                             const after = value.substring(triggerIndex + 2 + matchedQueryLength); // +2 for '[['

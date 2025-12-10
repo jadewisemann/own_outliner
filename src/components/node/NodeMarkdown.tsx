@@ -34,22 +34,36 @@ export const NodeMarkdown: React.FC<NodeMarkdownProps> = ({ content }) => {
                 if (part === '') return null;
 
                 return (
-                    <span key={index} className="inline-block align-top">
+                    <span key={index} className="inline">
                         <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{
                                 p: ({ node, ...props }) => <p className="oo-markdown-p m-0 inline" {...props} />, // Render P as inline for flow
                                 a: ({ node, href, children, ...props }) => {
-                                    // Check if href is an internal link ((UUID))
-                                    const internalMatch = href?.match(/^\(\(([a-zA-Z0-9-]+\))\)$/);
-                                    if (internalMatch) {
-                                        // actually regex captured ((id)) inside parens?
-                                        // href is ((id)). regex is ^\(\((id)\)\)$. 
-                                        // Let's simpler: check starts with (( ends with ))
-                                        if (href?.startsWith('((') && href?.endsWith('))')) {
-                                            const id = href.slice(2, -2);
-                                            return <NodeReference nodeId={id}>{children}</NodeReference>;
-                                        }
+                                    // Check if href is an internal link. 
+                                    // Supports:
+                                    // 1. ((UUID)) - Legacy/Current wrapper
+                                    // 2. UUID - New standard [Label](UUID)
+
+                                    // Simple check: is it a UUID?
+                                    // UUID regex: 8-4-4-4-12 hex digits.
+                                    // Also supporting our simple IDs if any? Current IDs seem to be UUIDs.
+                                    // Let's rely on exact match or ((wrapper)).
+
+                                    if (!href) return <a {...props}>{children}</a>;
+
+                                    let targetId: string | null = null;
+
+                                    if (href.match(/^[a-zA-Z0-9-]+$/)) {
+                                        // Plain ID (UUID or short ID)
+                                        targetId = href;
+                                    } else if (href.startsWith('((') && href.endsWith('))')) {
+                                        // ((UUID))
+                                        targetId = href.slice(2, -2);
+                                    }
+
+                                    if (targetId) {
+                                        return <NodeReference nodeId={targetId}>{children}</NodeReference>;
                                     }
 
                                     return <a className="oo-markdown-link text-blue-500 hover:underline pointer-events-auto" onClick={e => e.stopPropagation()} target="_blank" rel="noopener noreferrer" href={href} {...props}>{children}</a>
