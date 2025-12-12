@@ -27,13 +27,13 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id, inputRef, onPaste 
                 <NodeInput
                     id={id}
                     ref={inputRef}
-                    content={node.content}
+                    content={node.content || ''}
                     isSelected={isSelected}
                     onPaste={onPaste}
                 />
             ) : (
-                <div className={`prose prose-sm max-w-none leading-normal text-gray-800 pointer-events-none ${node.content.trim() === '' ? 'h-6' : ''}`}>
-                    <NodeMarkdown content={node.content} />
+                <div className={`prose prose-sm max-w-none leading-normal text-gray-800 pointer-events-none ${(node.content || '').trim() === '' ? 'h-6' : ''}`}>
+                    <NodeMarkdown content={node.content || ''} />
                     <NodeBacklinksIndicator id={id} />
                 </div>
             )}

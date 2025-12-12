@@ -54,7 +54,10 @@ export class SupabaseProvider {
                 if (status === 'SUBSCRIBED') {
                     this._synced = true;
                     // Sync step 1: Send SyncStep1 to announce we are here
-                    this.sendMessage(syncProtocol.createSyncStep1(this.doc));
+                    const encoder = encoding.createEncoder();
+                    // @ts-ignore: writeSyncStep1 exists at runtime but is missing in type definitions
+                    syncProtocol.writeSyncStep1(encoder, this.doc);
+                    this.sendMessage(encoding.toUint8Array(encoder));
                 }
             });
     }
