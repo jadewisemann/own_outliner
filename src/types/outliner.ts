@@ -6,6 +6,8 @@ export interface NodeData {
     parentId: NodeId | null;
     children: NodeId[];
     isCollapsed: boolean;
+    createdAt?: number; // Unix timestamp
+    updatedAt?: number; // Unix timestamp
 }
 
 // Keybindings definitions
@@ -76,7 +78,18 @@ export interface OutlinerState {
     // Complex action
     pasteNodes: (parentId: NodeId, index: number, nodes: { content: string, children: any[] }[]) => void;
     splitNode: (id: NodeId, cursorPosition: number) => void;
-    mergeNode: (id: NodeId) => void;
+    // Auth
+    user: any | null; // Placeholder, better if imported from AuthSlice
+    session: any | null;
+    isAuthLoading: boolean;
+    initializeAuth: () => Promise<void>;
+    signOut: () => Promise<void>;
+
+    // Sync
+    isSyncing: boolean;
+    lastSyncedAt: Date | null;
+    pullFromCloud: () => Promise<void>;
+    pushToCloud: () => Promise<void>;
 
     // Settings
     settings: OutlinerSettings;
@@ -93,4 +106,6 @@ export interface OutlinerState {
     selectRange: (targetId: NodeId) => void;
     expandSelection: (currentId: NodeId) => void;
     deleteNodes: (ids: NodeId[]) => void;
+
+
 }

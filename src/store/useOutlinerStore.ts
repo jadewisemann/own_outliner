@@ -10,6 +10,9 @@ import { createFocusSlice } from '@/store/slices/focusSlice';
 import { createSettingsSlice } from '@/store/slices/settingsSlice';
 import { createNavigationSlice } from '@/store/slices/navigationSlice';
 
+import { createAuthSlice } from '@/store/slices/authSlice';
+import { createSyncSlice } from '@/store/slices/syncSlice';
+
 const defaultSettings = {
     splitBehavior: 'auto' as const,
     linkClickBehavior: 'edit' as const,
@@ -25,6 +28,8 @@ export const useOutlinerStore = create<OutlinerState>()(
                 ...createFocusSlice(...a),
                 ...createSettingsSlice(...a),
                 ...createNavigationSlice(...a),
+                ...createAuthSlice(...a),
+                ...createSyncSlice(...a),
                 flashId: null,
                 backlinks: {},
             }),
@@ -127,7 +132,17 @@ export const useOutlinerStore = create<OutlinerState>()(
                 },
                 partialize: (state) => {
                     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    const { selectedIds, selectionAnchorId, focusedId, flashId, ...rest } = state;
+                    const {
+                        selectedIds,
+                        selectionAnchorId,
+                        focusedId,
+                        flashId,
+                        user,
+                        session,
+                        isAuthLoading,
+                        isSyncing,
+                        ...rest
+                    } = state;
                     return rest;
                 },
                 onRehydrateStorage: () => (state) => {

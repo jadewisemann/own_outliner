@@ -37,6 +37,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     const setKeybinding = useOutlinerStore(state => state.setKeybinding);
     const resetKeybindings = useOutlinerStore(state => state.resetKeybindings);
 
+    // Selectors for Sync/Auth (Moved to top level to follow Rules of Hooks)
+    const user = useOutlinerStore(state => state.user);
+    const lastSyncedAt = useOutlinerStore(state => state.lastSyncedAt);
+    const isSyncing = useOutlinerStore(state => state.isSyncing);
+
     // Determine if we are recording a new key for a specific action
     const [recordingAction, setRecordingAction] = useState<KeyAction | null>(null);
 
@@ -109,8 +114,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                     <button
                                         onClick={() => useOutlinerStore.getState().setSetting('linkClickBehavior', 'edit')}
                                         className={`px-3 py-1.5 text-sm rounded-md transition-all ${settings.linkClickBehavior === 'edit'
-                                                ? 'bg-white text-blue-600 shadow-sm font-medium'
-                                                : 'text-gray-500 hover:text-gray-700'
+                                            ? 'bg-white text-blue-600 shadow-sm font-medium'
+                                            : 'text-gray-500 hover:text-gray-700'
                                             }`}
                                     >
                                         Edit (Focus)
@@ -118,8 +123,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                     <button
                                         onClick={() => useOutlinerStore.getState().setSetting('linkClickBehavior', 'select')}
                                         className={`px-3 py-1.5 text-sm rounded-md transition-all ${settings.linkClickBehavior === 'select'
-                                                ? 'bg-white text-blue-600 shadow-sm font-medium'
-                                                : 'text-gray-500 hover:text-gray-700'
+                                            ? 'bg-white text-blue-600 shadow-sm font-medium'
+                                            : 'text-gray-500 hover:text-gray-700'
                                             }`}
                                     >
                                         Navigate (Select)
@@ -128,7 +133,54 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                             </div>
                         </div>
                     </div>
+                    <div className="mb-8">
+                        <h3 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">Sync & Account</h3>
+                        <div className="space-y-4">
+                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                                <div className="flex justify-between items-center mb-4">
+                                    <div>
+                                        <p className="font-semibold text-gray-800">
+                                            {user?.email || 'Not logged in'}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            Last synced: {lastSyncedAt?.toLocaleString() || 'Never'}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => useOutlinerStore.getState().signOut()}
+                                        className="text-sm text-red-600 hover:text-red-800 font-medium px-3 py-1 hover:bg-red-50 rounded"
+                                    >
+                                        Sign Out
+                                    </button>
+                                </div>
 
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={async () => {
+                                            const push = useOutlinerStore.getState().pushToCloud;
+                                            await push();
+                                            alert('Pushed to cloud!');
+                                        }}
+                                        disabled={isSyncing}
+                                        className="flex-1 bg-white border border-gray-300 text-gray-700 py-2 rounded hover:bg-gray-50 text-sm font-medium disabled:opacity-50"
+                                    >
+                                        ⬆️ Push to Cloud
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            const pull = useOutlinerStore.getState().pullFromCloud;
+                                            await pull();
+                                            alert('Pulled from cloud!');
+                                        }}
+                                        disabled={isSyncing}
+                                        className="flex-1 bg-white border border-gray-300 text-gray-700 py-2 rounded hover:bg-gray-50 text-sm font-medium disabled:opacity-50"
+                                    >
+                                        ⬇️ Pull from Cloud
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div className="mb-8">
                         <h3 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">Keybindings</h3>
                         <div className="grid grid-cols-1 gap-2">
