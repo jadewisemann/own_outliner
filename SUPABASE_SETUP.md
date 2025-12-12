@@ -56,4 +56,37 @@ VITE_SUPABASE_URL=YOUR_SUPABASE_URL
 VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 ```
 
-설정이 완료되면 앱 내 로그인 화면에서 회원가입을 하고 데이터를 동기화할 수 있습니다.
+
+## 4. SSO (Social Login) 설정
+Google, GitHub 등으로 로그인하려면 Supabase 대시보드에서 Provider를 활성화해야 합니다.
+
+### 4.1 GitHub 로그인 설정
+1. [GitHub Developer Settings](https://github.com/settings/developers)로 이동합니다.
+2. **New OAuth App**을 클릭합니다.
+3. 아래와 같이 입력합니다:
+    - **Application Name**: Own Outliner (또는 원하는 이름)
+    - **Homepage URL**: `http://localhost:5173` (배포 후에는 배포된 URL로 변경, 예: `https://your-project.vercel.app`)
+    - **Authorization callback URL**: `https://<YOUR_PROJECT_ID>.supabase.co/auth/v1/callback`
+        - (Supabase 대시보드 -> Authentication -> Providers -> GitHub -> Callback URL에서 확인 가능)
+4. 생성 후 **Client ID**와 **Client Secret**을 복사합니다.
+5. Supabase 대시보드 -> Authentication -> Providers -> **GitHub**를 선택합니다.
+6. **Enable GitHub**를 켜고, Client ID와 Client Secret을 붙여넣습니다.
+7. **Save**를 클릭합니다.
+### 4.2 Google 로그인 설정
+1. [Google Cloud Console](https://console.cloud.googles.com/)로 이동합니다.
+2. 새 프로젝트를 생성하거나 기존 프로젝트를 선택합니다.
+3. **APIs & Services** -> **Credentials**로 이동합니다.
+4. **Create Credentials** -> **OAuth client ID**를 선택합니다.
+5. **Application type**을 **Web application**으로 선택합니다.
+6. **Authorized redirect URIs**에 Supabase Callback URL을 추가합니다 (`https://<YOUR_PROJECT_ID>.supabase.co/auth/v1/callback`).
+7. 생성된 **Client ID**와 **Client Secret**을 Supabase 대시보드의 Google Provider 설정에 입력하고 저장합니다.
+
+## 5. 배포 (Deployment)
+Vercel을 사용하여 배포하는 것을 권장합니다.
+
+1. Vercel CLI 설치: `npm i -g vercel` 또는 `npx vercel` 사용
+2. 배포 명령 실행: `npx vercel`
+3. 환경 변수 설정:
+    - Vercel 프로젝트 대시보드 -> Settings -> Environment Variables
+    - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` 추가
+4. **중요**: 배포 후 Supabase 대시보드 -> Authentication -> URL Configuration -> **Site URL**을 배포된 Vercel URL로 변경해야 리다이렉트가 정상 작동합니다. I.e. `https://your-project.vercel.app`
