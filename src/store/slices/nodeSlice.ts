@@ -36,6 +36,7 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
             parentId: null,
             children: [],
             isCollapsed: false,
+            updatedAt: Date.now(),
         },
     },
     rootNodeId: INITIAL_ROOT_ID,
@@ -67,6 +68,7 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
                     [parent.id]: {
                         ...parent,
                         children: newChildren,
+                        updatedAt: Date.now(),
                     },
                 },
                 focusedId: id, // Auto focus new node
@@ -112,6 +114,7 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
 
             const deleteRecursively = (targetId: NodeId, nodesMap: Record<NodeId, NodeData>) => {
                 const target = nodesMap[targetId];
+                if (!target) return; // Defensive check
 
                 // Cleanup backlinks for THIS node being deleted
                 const links = extractIDs(target.content || '');
@@ -132,7 +135,7 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
             deleteRecursively(id, newNodes);
 
             const newParentChildren = parent.children.filter((childId) => childId !== id);
-            newNodes[parent.id] = { ...parent, children: newParentChildren };
+            newNodes[parent.id] = { ...parent, children: newParentChildren, updatedAt: Date.now() };
 
             let newSelectedIds = state.selectedIds;
             if (state.selectedIds.includes(id)) {
@@ -180,6 +183,7 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
 
             const deleteRecursively = (targetId: NodeId) => {
                 const target = newNodes[targetId];
+                if (!target) return; // Defensive check
 
                 // Backlinks cleanup
                 const links = extractIDs(target.content || '');
@@ -207,7 +211,7 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
                 if (newNodes[parentId]) {
                     const parent = newNodes[parentId];
                     const newChildren = parent.children.filter(cid => !ids.includes(cid));
-                    newNodes[parentId] = { ...parent, children: newChildren };
+                    newNodes[parentId] = { ...parent, children: newChildren, updatedAt: Date.now() };
                 }
             });
 
@@ -264,6 +268,7 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
                     [id]: {
                         ...oldNode,
                         content,
+                        updatedAt: Date.now(),
                     },
                 },
                 backlinks: newBacklinks,
@@ -278,6 +283,7 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
                 [id]: {
                     ...state.nodes[id],
                     isCollapsed: !state.nodes[id].isCollapsed,
+                    updatedAt: Date.now(),
                 },
             },
         }));
@@ -304,12 +310,13 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
             return {
                 nodes: {
                     ...state.nodes,
-                    [id]: { ...node, parentId: prevSiblingId },
-                    [parent.id]: { ...parent, children: newParentChildren },
+                    [id]: { ...node, parentId: prevSiblingId, updatedAt: Date.now() },
+                    [parent.id]: { ...parent, children: newParentChildren, updatedAt: Date.now() },
                     [prevSiblingId]: {
                         ...prevSibling,
                         children: newPrevSiblingChildren,
-                        isCollapsed: false
+                        isCollapsed: false,
+                        updatedAt: Date.now()
                     },
                 },
             };
@@ -338,9 +345,9 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
             return {
                 nodes: {
                     ...state.nodes,
-                    [id]: { ...node, parentId: grandParentId },
-                    [parent.id]: { ...parent, children: newParentChildren },
-                    [grandParent.id]: { ...grandParent, children: newGrandParentChildren },
+                    [id]: { ...node, parentId: grandParentId, updatedAt: Date.now() },
+                    [parent.id]: { ...parent, children: newParentChildren, updatedAt: Date.now() },
+                    [grandParent.id]: { ...grandParent, children: newGrandParentChildren, updatedAt: Date.now() },
                 },
             };
         });
@@ -395,6 +402,7 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
                     [parent.id]: {
                         ...parent,
                         children: newChildren,
+                        updatedAt: Date.now(),
                     },
                 },
             };
@@ -415,7 +423,8 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
                     content: nodeData.content,
                     parentId: pId,
                     children: newChildrenIds,
-                    isCollapsed: false
+                    isCollapsed: false,
+                    updatedAt: Date.now()
                 };
                 return newId;
             };
@@ -438,7 +447,8 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
                     ...newNodes,
                     [parent.id]: {
                         ...parent,
-                        children: newParentChildren
+                        children: newParentChildren,
+                        updatedAt: Date.now()
                     }
                 },
                 focusedId: addedIds[addedIds.length - 1]
@@ -476,7 +486,8 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
                     ...node,
                     content: leftContent,
                     children: newCurrentChildren,
-                    isCollapsed: false
+                    isCollapsed: false,
+                    updatedAt: Date.now()
                 };
                 nodes[newId] = newNode;
             } else {
@@ -484,9 +495,9 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
                 const newChildren = [...parent.children];
                 newChildren.splice(index + 1, 0, newId);
 
-                nodes[id] = { ...node, content: leftContent };
+                nodes[id] = { ...node, content: leftContent, updatedAt: Date.now() };
                 nodes[newId] = newNode;
-                nodes[parent.id] = { ...parent, children: newChildren };
+                nodes[parent.id] = { ...parent, children: newChildren, updatedAt: Date.now() };
             }
 
             return {
@@ -566,7 +577,7 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
             const childrenUpdates: Record<NodeId, NodeData> = {};
             node.children.forEach(childId => {
                 const child = state.nodes[childId];
-                childrenUpdates[childId] = { ...child, parentId: prevSiblingId };
+                childrenUpdates[childId] = { ...child, parentId: prevSiblingId, updatedAt: Date.now() };
             });
 
             const newPrevChildren = [...prevSibling.children, ...node.children];
@@ -583,9 +594,10 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
                         ...prevSibling,
                         content: newContent,
                         children: newPrevChildren,
-                        isCollapsed: false
+                        isCollapsed: false,
+                        updatedAt: Date.now()
                     },
-                    [parent.id]: { ...parent, children: newParentChildren }
+                    [parent.id]: { ...parent, children: newParentChildren, updatedAt: Date.now() }
                 },
                 focusedId: prevSiblingId,
                 backlinks: newBacklinks
