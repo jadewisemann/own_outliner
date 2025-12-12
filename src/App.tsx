@@ -65,6 +65,49 @@ function App() {
     initializeAuth();
   }, [initializeAuth]);
 
+  // Sync Logic (Pull on load + Realtime)
+  const pullFromCloud = useOutlinerStore((state) => state.pullFromCloud);
+
+  useEffect(() => {
+    if (!user) return;
+
+    // 1. Initial Pull
+    pullFromCloud();
+
+    // 2. Realtime Subscription
+    // Listen for ANY change to the 'nodes' table for this user
+    import('@/lib/supabase').then(({ supabase }) => {
+      const channel = supabase
+        .channel('public:nodes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'nodes',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            console.log('Realtime change detected:', payload);
+            // Avoid pulling if WE caused the change (checking IDs might be hard without timestamps)
+            // For now, simple refetch strategy. 
+            // To avoid loop (Push -> Realtime -> Pull -> Push?), ensure Pull doesn't trigger Push.
+            // Push trigger is: state.nodes !== prevState.nodes.
+            // Pull sets state.nodes. This WILL trigger push if not careful.
+            // But syncSlice.pullFromCloud does NOT set isSyncing=true during the internal logic in a way that blocks push?
+            // Actually, useOutlinerStore's subscriber checks: if (!useOutlinerStore.getState().isSyncing).
+            // syncSlice sets isSyncing=true during pull. So it should be safe!
+            pullFromCloud();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    });
+  }, [user, pullFromCloud]);
+
   // TODO: Loading state
   if (!rootNode) return <div className="p-10">Loading...</div>;
 
