@@ -55,9 +55,15 @@ export class SupabaseProvider {
                     this._synced = true;
                     // Sync step 1: Send SyncStep1 to announce we are here
                     const encoder = encoding.createEncoder();
-                    // @ts-ignore: writeSyncStep1 exists at runtime but is missing in type definitions
-                    syncProtocol.writeSyncStep1(encoder, this.doc);
-                    this.sendMessage(encoding.toUint8Array(encoder));
+                    // @ts-ignore: Access via bracket notation to prevent minification issues and handle type missing
+                    const writeSyncStep1 = syncProtocol['writeSyncStep1'] || (syncProtocol as any).writeSyncStep1;
+
+                    if (typeof writeSyncStep1 === 'function') {
+                        writeSyncStep1(encoder, this.doc);
+                        this.sendMessage(encoding.toUint8Array(encoder));
+                    } else {
+                        console.error('[Yjs] Critical Error: writeSyncStep1 function not found in syncProtocol', syncProtocol);
+                    }
                 }
             });
     }
