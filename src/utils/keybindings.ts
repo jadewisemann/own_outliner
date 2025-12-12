@@ -1,6 +1,7 @@
 import type { Keybinding } from '../types/outliner';
 
-export const isMatch = (event: KeyboardEvent | React.KeyboardEvent, binding: Keybinding): boolean => {
+export const isMatch = (event: KeyboardEvent | React.KeyboardEvent, binding: Keybinding | undefined): boolean => {
+    if (!binding) return false;
     // Check Key
     if (event.key.toLowerCase() !== binding.key.toLowerCase()) {
         return false;
