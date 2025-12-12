@@ -9,4 +9,5 @@ export const createInitialNode = (id: string, content: string = ''): NodeData =>
     parentId: null,
     children: [],
     isCollapsed: false,
+    updatedAt: Date.now(),
 });
