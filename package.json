@@ -11,6 +11,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.87.1",
     "@tailwindcss/postcss": "^4.1.17",
     "clsx": "^2.1.1",
     "lucide-react": "^0.556.0",

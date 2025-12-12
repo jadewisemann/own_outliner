@@ -4,6 +4,7 @@ import { useOutlinerStore } from './store/useOutlinerStore';
 import { NodeItem } from './components/NodeItem';
 import { SettingsModal } from './components/SettingsModal';
 import { SearchModal } from './components/SearchModal';
+import { LoginModal } from './components/LoginModal';
 import { useVisibleNodes } from './hooks/useVisibleNodes';
 import { isMatch } from './utils/keybindings';
 
@@ -56,8 +57,20 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [settings.keybindings]);
 
+  // Auth Initialization
+  const user = useOutlinerStore((state) => state.user);
+  const initializeAuth = useOutlinerStore((state) => state.initializeAuth);
+
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
+
   // TODO: Loading state
   if (!rootNode) return <div className="p-10">Loading...</div>;
+
+  if (!user) {
+    return <LoginModal />; // Force login for now (or make it optional based on requirement)
+  }
 
   return (
     <div className="oo-app-container min-h-screen bg-white text-gray-900 p-10 max-w-4xl mx-auto">
