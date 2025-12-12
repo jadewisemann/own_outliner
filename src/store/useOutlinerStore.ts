@@ -160,3 +160,26 @@ export const useOutlinerStore = create<OutlinerState>()(
         }
     )
 );
+
+
+// Auto-Sync Handling using subscription
+// Just outside the store hook creation
+let syncTimeout: ReturnType<typeof setTimeout> | null = null;
+const DEBOUNCE_MS = 3000;
+
+useOutlinerStore.subscribe((state, prevState) => {
+    // Check if nodes changed
+    if (state.nodes !== prevState.nodes) {
+        // Only trigger if user is logged in
+        if (state.user) {
+            if (syncTimeout) clearTimeout(syncTimeout);
+
+            syncTimeout = setTimeout(() => {
+                if (!useOutlinerStore.getState().isSyncing) {
+                    console.log('Auto-sync triggering...');
+                    useOutlinerStore.getState().pushToCloud();
+                }
+            }, DEBOUNCE_MS);
+        }
+    }
+});
