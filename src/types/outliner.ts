@@ -79,6 +79,10 @@ export interface OutlinerState {
     pasteNodes: (parentId: NodeId, index: number, nodes: { content: string, children: any[] }[]) => void;
     splitNode: (id: NodeId, cursorPosition: number) => void;
     mergeNode: (id: NodeId) => void;
+    // Yjs / CRDT properties
+    doc?: any; // typed as Y.Doc in implementation, but interface might need generic or loose type to avoid strict coupling in types file if Yjs not imported here. Better to import Y from yjs.
+    provider?: any;
+    initializeSync: () => Promise<void>;
     // Auth
     user: any | null; // Placeholder, better if imported from AuthSlice
     session: any | null;
