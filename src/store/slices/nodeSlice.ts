@@ -134,6 +134,14 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
         const { doc } = get();
         if (!doc) return;
 
+        // 1. Calculate Next Focus Target (Before Deletion)
+        // Strategy: Previous Sibling (User-visible order) -> Parent
+        // We can use the 'nodes' (Zustand state) for quick lookup since it's sync'd?
+        // Actually Yjs transaction is safer if we want strict consistency, but 'nodes' is easier to traverse for 'previous'.
+        // Let's use Yjs to be consistent with the deletion source.
+
+        let nextFocusId: string | null = null;
+
         doc.transact(() => {
             const yNodes = doc.getMap('nodes');
             const node = yNodes.get(id) as Y.Map<any>;
@@ -142,7 +150,38 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
             const parentId = node.get('parentId');
             const parent = yNodes.get(parentId) as Y.Map<any>;
 
-            // Recursive delete helper
+            if (parent) {
+                const children = parent.get('children') as Y.Array<string>;
+                const arr = children.toArray();
+                const index = arr.indexOf(id);
+
+                if (index > 0) {
+                    // Previous Sibling
+                    const prevSiblingId = arr[index - 1];
+                    // If previous sibling is expanded, we might want to go to its last visible child (deepest).
+                    // But standard 'Backspace' behavior often just goes to the sibling itself. 
+                    // Let's stick to simple sibling for now, or match 'moveFocus' logic?
+                    // User request: "Curser goes nowhere... should go close."
+                    // Common behavior: Up arrow logic.
+                    // If I am at index 2, deleting it -> Go to index 1.
+                    nextFocusId = prevSiblingId;
+
+                    // Optional: If we want to simulate "Up Arrow", we should descend into prevSibling if it is expanded.
+                    // Accessing Zustand state for 'isCollapsed' is easier.
+                    // But we are in a transaction.
+                    // Let's just set to prevSiblingId for now. It's safe.
+                } else {
+                    // No previous sibling -> Go to Parent (unless Root)
+                    if (parentId !== 'root') {
+                        nextFocusId = parentId;
+                    }
+                }
+
+                // Delete logic
+                children.delete(index, 1);
+            }
+
+            // Recursive delete helper (same as before)
             const deleteRecursively = (targetId: string) => {
                 const target = yNodes.get(targetId) as Y.Map<any>;
                 if (!target) return;
@@ -153,24 +192,12 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
                 yNodes.delete(targetId);
             };
 
-            // Remove from parent children
-            if (parent) {
-                const children = parent.get('children') as Y.Array<string>;
-                // Find index
-                let index = -1;
-                // Y.Array doesn't have indexOf for primitives effectively? 
-                // It returns items.
-                // We can iterate.
-                const arr = children.toArray();
-                index = arr.indexOf(id);
-
-                if (index !== -1) {
-                    children.delete(index, 1);
-                }
-            }
-
             deleteRecursively(id);
         });
+
+        if (nextFocusId) {
+            set({ focusedId: nextFocusId });
+        }
     },
 
     deleteNodes: (ids) => {
