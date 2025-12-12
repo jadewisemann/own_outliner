@@ -6,7 +6,7 @@
 
 # 2. Convention
 - Format: `TYPE (scope): English imperative title`
-- Body: Korean description.
+- Body: Korean description (Optional, include only if detail is needed).
 - Types: `FEAT`, `FIX`, `CHORE`, `REFACTOR`, `DOCS`, `STYLE`.
 - Example:
   ```
