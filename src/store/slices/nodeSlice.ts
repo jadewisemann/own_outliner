@@ -134,13 +134,8 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
         const { doc } = get();
         if (!doc) return;
 
-        // 1. Calculate Next Focus Target (Before Deletion)
-        // Strategy: Previous Sibling (User-visible order) -> Parent
-        // We can use the 'nodes' (Zustand state) for quick lookup since it's sync'd?
-        // Actually Yjs transaction is safer if we want strict consistency, but 'nodes' is easier to traverse for 'previous'.
-        // Let's use Yjs to be consistent with the deletion source.
-
         let nextFocusId: string | null = null;
+        let nextCursorPos: number | null = null;
 
         doc.transact(() => {
             const yNodes = doc.getMap('nodes');
@@ -156,32 +151,46 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
                 const index = arr.indexOf(id);
 
                 if (index > 0) {
-                    // Previous Sibling
-                    const prevSiblingId = arr[index - 1];
-                    // If previous sibling is expanded, we might want to go to its last visible child (deepest).
-                    // But standard 'Backspace' behavior often just goes to the sibling itself. 
-                    // Let's stick to simple sibling for now, or match 'moveFocus' logic?
-                    // User request: "Curser goes nowhere... should go close."
-                    // Common behavior: Up arrow logic.
-                    // If I am at index 2, deleting it -> Go to index 1.
-                    nextFocusId = prevSiblingId;
+                    // 1. Previous Sibling (Users expect to go to the "node above")
+                    let targetId = arr[index - 1];
+                    let targetNode = yNodes.get(targetId) as Y.Map<any>;
 
-                    // Optional: If we want to simulate "Up Arrow", we should descend into prevSibling if it is expanded.
-                    // Accessing Zustand state for 'isCollapsed' is easier.
-                    // But we are in a transaction.
-                    // Let's just set to prevSiblingId for now. It's safe.
+                    // Drill down to the last visible descendant
+                    while (targetNode) {
+                        const isCollapsed = targetNode.get('isCollapsed');
+                        const tChildren = targetNode.get('children') as Y.Array<string>;
+
+                        // If expanded and has children, go to last child
+                        if (!isCollapsed && tChildren.length > 0) {
+                            const tArr = tChildren.toArray();
+                            targetId = tArr[tArr.length - 1];
+                            targetNode = yNodes.get(targetId) as Y.Map<any>;
+                        } else {
+                            // Found the visual leaf
+                            break;
+                        }
+                    }
+
+                    if (targetId) {
+                        nextFocusId = targetId;
+                        const content = (targetNode?.get('content') as string) || '';
+                        nextCursorPos = content.length;
+                    }
                 } else {
-                    // No previous sibling -> Go to Parent (unless Root)
+                    // 2. Parent (if no previous sibling)
                     if (parentId !== 'root') {
                         nextFocusId = parentId;
+                        const pNode = yNodes.get(parentId) as Y.Map<any>;
+                        const content = (pNode?.get('content') as string) || '';
+                        nextCursorPos = content.length;
                     }
                 }
 
-                // Delete logic
+                // Execute Delete
                 children.delete(index, 1);
             }
 
-            // Recursive delete helper (same as before)
+            // Recursive cleanup
             const deleteRecursively = (targetId: string) => {
                 const target = yNodes.get(targetId) as Y.Map<any>;
                 if (!target) return;
@@ -196,7 +205,9 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
         });
 
         if (nextFocusId) {
-            set({ focusedId: nextFocusId });
+            // We set both focusedId and focusCursorPos directly.
+            // This works because 'set' merges into the main store state.
+            set({ focusedId: nextFocusId, focusCursorPos: nextCursorPos });
         }
     },
 
