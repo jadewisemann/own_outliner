@@ -76,20 +76,36 @@ export const NodeShell: React.FC<NodeShellProps> = ({
                 e.stopPropagation();
                 toggleCollapse(id);
               }}
-              className="w-5 h-5 flex items-center justify-center rounded-sm hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
+              className="group/toggle w-5 h-5 flex items-center justify-center rounded-sm hover:bg-slate-200 transition-colors cursor-pointer"
             >
-              {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+              {/* Bullet (Default Visible) */}
+              <div className="group-hover/toggle:hidden flex items-center justify-center">
+                <div
+                  className={`
+                        rounded-full transition-all duration-300
+                        ${isCollapsed ? 'w-2 h-2 border-2 border-slate-400 bg-white' : 'w-1.5 h-1.5 bg-slate-300'}
+                        ${isFocused && !isCollapsed ? '!bg-blue-400 scale-125' : ''}
+                    `}
+                />
+              </div>
+
+              {/* Chevron (Hover Visible) */}
+              <div className="hidden group-hover/toggle:block text-slate-500">
+                {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+              </div>
             </button>
           ) : (
-            <div
-              className={`w-1.5 h-1.5 rounded-full transition-all duration-300
-                                ${isFocused ? 'bg-blue-400 scale-125' : 'bg-slate-300 group-hover:bg-slate-400'}
-                            `}
-              onClick={(e) => {
-                e.preventDefault(); // Prevent focus steal if needed
-                selectNode(id); // Click bullet to select?
-              }}
-            />
+            <div className="w-5 h-5 flex items-center justify-center">
+              <div
+                className={`w-1.5 h-1.5 rounded-full transition-all duration-300
+                                    ${isFocused ? 'bg-blue-400 scale-125' : 'bg-slate-300 group-hover:bg-slate-400'}
+                                `}
+                onClick={(e) => {
+                  e.preventDefault();
+                  selectNode(id);
+                }}
+              />
+            </div>
           )}
         </div>
 
