@@ -49,14 +49,15 @@ export const NodeShell: React.FC<NodeShellProps> = ({
     <div
       className={`oo-node-shell group relative select-none transition-colors duration-200
                 ${isSelected ? 'bg-blue-50/80 rounded-lg' : ''}
+                ${isFocused && !isSelected ? 'bg-slate-100/50 rounded-lg' : ''}
             `}
       style={{
-        paddingLeft: isSelected ? `${level * 24}px` : `${level * 24}px`
+        paddingLeft: isSelected || isFocused ? `${level * 24}px` : `${level * 24}px`
         // Adjust logic: if selected, we might want background to span? 
         // For now, keep simple indentation.
       }}
     >
-      <div className={`flex items-start min-h-[32px] py-0.5 pr-2 rounded-md ${isFocused ? '' : 'hover:bg-slate-50'}`}>
+      <div className={`flex items-start min-h-[32px] py-0.5 pr-2 rounded-md`}>
 
         {/* Left Controls (Desktop Only - Hover) */}
         <div
