@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { MobileToolbar } from '../editor/MobileToolbar';
+import { ChevronRight } from 'lucide-react';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -33,13 +34,30 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       {/* Main Content */}
       <main className="flex-1 h-full overflow-y-auto relative scroll-smooth">
         {/* Top Header / Breadcrumbs (Desktop) - Optional in this layout if integrated elsewhere */}
-        <div className="sticky top-0 z-10 bg-[#f8fafc]/80 backdrop-blur-md h-14 flex items-center px-4 md:px-8 border-b border-transparent md:border-slate-100/50 transition-colors">
+        <div className="sticky top-0 z-10 bg-[#f8fafc]/80 backdrop-blur-md h-12 flex items-center px-4 md:px-8 border-b border-transparent md:border-slate-100/50 transition-colors">
+          {/* Sidebar Toggle for Desktop (when closed) & Mobile */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="mr-3 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded md:hidden"
+          >
+            <ChevronRight size={20} className={sidebarOpen ? 'rotate-180' : ''} />
+          </button>
+
+          {/* Desktop Toggle (only visible when closed, or always? Let's make it always visible like Notion) */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className={`hidden md:flex mr-3 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded transition-transform duration-200 ${sidebarOpen ? 'rotate-180' : ''}`}
+            title="Toggle Sidebar"
+          >
+            <ChevronRight size={18} />
+          </button>
+
           <div className="text-sm text-slate-400 flex items-center gap-2">
             <span className="text-slate-900 font-medium">Home</span>
           </div>
         </div>
 
-        <div className="max-w-3xl mx-auto px-4 py-8 pb-32 md:pb-12 min-h-screen">
+        <div className="max-w-3xl mx-auto px-4 py-4 pb-32 md:pb-12 min-h-screen">
           {children}
         </div>
       </main>
