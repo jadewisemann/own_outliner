@@ -16,15 +16,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle }) => {
             flex flex-col
         `}
     >
-      {/* Header */}
-      <div className="h-14 flex items-center justify-between px-4 border-b border-slate-100/50">
-        <div className="flex items-center gap-2 font-semibold text-slate-700">
-          <div className="w-5 h-5 bg-slate-900 rounded-md flex items-center justify-center">
-            <span className="text-white text-[10px] font-bold">O</span>
-          </div>
-          <span>Own Outliner</span>
-        </div>
-        <button onClick={toggle} className="md:hidden p-1 text-slate-400">
+      {/* Header (Mobile Close Only) */}
+      <div className="h-14 flex items-center justify-end px-4 border-b border-slate-100/50 md:hidden">
+        <button onClick={toggle} className="p-1 text-slate-400">
           <ChevronLeft size={20} />
         </button>
       </div>

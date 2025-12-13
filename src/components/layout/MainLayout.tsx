@@ -35,6 +35,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       <main className="flex-1 h-full overflow-y-auto relative scroll-smooth">
         {/* Top Header / Breadcrumbs (Desktop) - Optional in this layout if integrated elsewhere */}
         <div className="sticky top-0 z-10 bg-[#f8fafc]/80 backdrop-blur-md h-12 flex items-center px-4 md:px-8 border-b border-transparent md:border-slate-100/50 transition-colors">
+
+          {/* Logo & Title */}
+          <div className="flex items-center gap-2 font-semibold text-slate-700 mr-4">
+            <div className="w-5 h-5 bg-slate-900 rounded-md flex items-center justify-center">
+              <span className="text-white text-[10px] font-bold">O</span>
+            </div>
+            <span className="hidden md:inline text-sm">Own Outliner</span>
+          </div>
+
           {/* Sidebar Toggle for Desktop (when closed) & Mobile */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
