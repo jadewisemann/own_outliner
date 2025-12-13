@@ -42,15 +42,45 @@ export class SupabaseProvider {
 
         this.channel
             .on('broadcast', { event: 'message' }, ({ payload }) => {
-                // console.log('[Yjs] Received broadcast payload:', payload);
-                // Payload from Supabase is technically 'any' but usually matches what we sent (number[])
-                // We cast to Uint8Array.
                 if (payload) {
                     this.handleMessage(new Uint8Array(payload as number[]));
                 }
             })
+            .on('broadcast', { event: 'chunk' }, ({ payload }) => {
+                // Reassemble chunks
+                if (payload && payload.id && payload.data) {
+                    const { id, total, index, data } = payload;
+                    // console.log(`[Yjs] Received chunk ${index + 1}/${total} for ${id}`);
+
+                    let entry = this.incomingChunks.get(id);
+                    if (!entry) {
+                        entry = { total, chunks: new Array(total), received: 0 };
+                        this.incomingChunks.set(id, entry);
+                    }
+
+                    if (!entry.chunks[index]) {
+                        entry.chunks[index] = new Uint8Array(data);
+                        entry.received++;
+                    }
+
+                    if (entry.received === total) {
+                        // All chunks received
+                        console.log(`[Yjs] Reassembled message ${id}, size: ${entry.chunks.reduce((acc, c) => acc + c.length, 0)}`);
+                        // Merge chunks
+                        const fullMessage = new Uint8Array(entry.chunks.reduce((acc, c) => acc + c.length, 0));
+                        let offset = 0;
+                        for (const chunk of entry.chunks) {
+                            fullMessage.set(chunk, offset);
+                            offset += chunk.length;
+                        }
+                        this.incomingChunks.delete(id);
+                        this.handleMessage(fullMessage);
+                    }
+                }
+            })
             .subscribe((status) => {
                 console.log(`[Yjs] Channel status: ${status}`);
+
                 if (status === 'SUBSCRIBED') {
                     this._synced = true;
                     // Sync step 1: Send SyncStep1 to announce we are here
@@ -64,6 +94,15 @@ export class SupabaseProvider {
                     } else {
                         console.error('[Yjs] Critical Error: writeSyncStep1 function not found in syncProtocol', syncProtocol);
                     }
+
+                    // Flush buffer
+                    this.flushBuffer();
+                } else {
+                    // Start buffering if connection lost (CLOSED, CHANNEL_ERROR, TIMED_OUT)
+                    if (this._synced) {
+                        console.warn(`[Yjs] Channel connection lost (${status}), buffering messages...`);
+                    }
+                    this._synced = false;
                 }
             });
     }
@@ -120,18 +159,50 @@ export class SupabaseProvider {
         this.sendMessage(encoding.toUint8Array(encoder));
     }
 
+    private messageBuffer: Uint8Array[] = [];
+    private incomingChunks: Map<string, { total: number, chunks: Uint8Array[], received: number }> = new Map();
+
     private sendMessage(message: Uint8Array) {
         if (this._synced && this.channel) {
-            // console.log('[Yjs] Sending Broadcast Message, length:', message.length);
-            // Supabase Broadcast accepts JSON object, so we convert Uint8Array to Array
-            // Actually, we can assume payload can be handled or send as number[]
-            this.channel.send({
-                type: 'broadcast',
-                event: 'message',
-                payload: Array.from(message),
-            }).catch(err => console.error('[Yjs] Send Error:', err));
+            const CHUNK_SIZE = 20000; // 20KB limit to be safe
+            if (message.length <= CHUNK_SIZE) {
+                this.channel.send({
+                    type: 'broadcast',
+                    event: 'message',
+                    payload: Array.from(message),
+                }).catch(err => console.error('[Yjs] Send Error:', err));
+            } else {
+                // Split into chunks
+                const total = Math.ceil(message.length / CHUNK_SIZE);
+                const chunkId = Math.random().toString(36).substring(7);
+                console.log(`[Yjs] Splitting message of size ${message.length} into ${total} chunks (ID: ${chunkId})`);
+
+                for (let i = 0; i < total; i++) {
+                    const chunk = message.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+                    this.channel.send({
+                        type: 'broadcast',
+                        event: 'chunk',
+                        payload: {
+                            id: chunkId,
+                            total,
+                            index: i,
+                            data: Array.from(chunk)
+                        }
+                    }).catch(err => console.error('[Yjs] Chunk Send Error:', err));
+                }
+            }
         } else {
-            console.warn('[Yjs] Cannot send, not synced yet or channel missing');
+            if (this.messageBuffer.length < 50) {
+                this.messageBuffer.push(message);
+            }
+        }
+    }
+
+    private flushBuffer() {
+        if (this.messageBuffer.length > 0) {
+            console.log(`[Yjs] Flushing ${this.messageBuffer.length} buffered messages`);
+            this.messageBuffer.forEach(msg => this.sendMessage(msg));
+            this.messageBuffer = [];
         }
     }
 
