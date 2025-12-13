@@ -25,7 +25,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   return (
     <div className="flex h-screen bg-[#f8fafc] overflow-hidden selection:bg-yellow-200 selection:text-slate-900">
 
-      <Sidebar isOpen={sidebarOpen} toggle={() => setSidebarOpen(!sidebarOpen)} />
+      {/* Sidebar - Desktop: fixed width, Mobile: absolute over content */}
+      <div
+        className={`fixed inset-y-0 left-0 z-20 w-64 transform bg-white dark:bg-neutral-900 transition-transform duration-200 ease-in-out md:relative md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:hidden'
+          }`}
+      >
+        <Sidebar onClose={() => setSidebarOpen(false)} />
+      </div>
 
       {/* Overlay for mobile sidebar */}
       {sidebarOpen && (

@@ -55,6 +55,17 @@ export interface OutlinerSettings {
     keybindings: Record<KeyAction, Keybinding>;
 }
 
+export interface Document {
+    id: string;
+    ownerId: string;
+    parentId: string | null;
+    title: string;
+    isFolder: boolean;
+    content?: Uint8Array; // Yjs binary
+    createdAt: string;
+    updatedAt: string;
+}
+
 export interface OutlinerState {
     nodes: Record<NodeId, NodeData>;
     rootNodeId: NodeId;
@@ -63,6 +74,17 @@ export interface OutlinerState {
     focusCursorPos: number | null;
     flashId: NodeId | null;
     backlinks: Record<NodeId, NodeId[]>; // TargetID -> SourceIDs
+
+    // Multi-document State
+    documents: Document[];
+    activeDocumentId: string | null;
+
+    // Document Actions
+    createDocument: (title: string, parentId?: string | null, isFolder?: boolean) => Promise<void>;
+    deleteDocument: (id: string) => Promise<void>;
+    renameDocument: (id: string, title: string) => Promise<void>;
+    setActiveDocument: (id: string) => Promise<void>;
+    fetchDocuments: () => Promise<void>;
 
     // Slash Menu State
     slashMenu: {
