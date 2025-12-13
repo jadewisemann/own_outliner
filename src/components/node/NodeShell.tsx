@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react';
-import { Trash2, ChevronRight, ChevronDown, MoreHorizontal } from 'lucide-react';
+import { Trash2, ChevronRight, ChevronDown, MoreHorizontal, ZoomIn } from 'lucide-react';
 import type { NodeId } from '@/types/outliner';
 import { useNodeLogic } from '@/hooks/node/useNodeLogic';
 
@@ -21,7 +21,8 @@ export const NodeShell: React.FC<NodeShellProps> = ({
     isFocused,
     toggleCollapse,
     deleteNode,
-    selectNode
+    selectNode,
+    setHoistedNode
   } = useNodeLogic(id);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -61,9 +62,10 @@ export const NodeShell: React.FC<NodeShellProps> = ({
 
         {/* Left Controls (Desktop Only - Hover) */}
         <div
-          className="hidden md:flex items-center justify-end w-12 -ml-12 pr-1 h-7 mt-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="hidden md:flex items-center justify-end w-14 -ml-14 pr-1 h-7 mt-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity gap-0.5"
           contentEditable={false}
         >
+          {/* Menu */}
           <div className="relative" ref={menuRef}>
             <button
               onClick={(e) => {
@@ -91,6 +93,18 @@ export const NodeShell: React.FC<NodeShellProps> = ({
               </div>
             )}
           </div>
+
+          {/* Zoom In */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setHoistedNode(id);
+            }}
+            className="p-1 text-slate-300 hover:text-slate-600 hover:bg-slate-200 rounded transition-colors"
+            title="Zoom In"
+          >
+            <ZoomIn size={14} />
+          </button>
         </div>
 
         {/* Bullet / Expander */}
