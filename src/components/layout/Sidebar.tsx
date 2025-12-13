@@ -3,7 +3,7 @@ import { useOutlinerStore } from '@/store/useOutlinerStore';
 import type { Document } from '@/types/outliner';
 import {
   Folder, FileText, ChevronRight, ChevronDown,
-  Plus, MoreHorizontal, Trash2, Edit2, FolderPlus
+  Plus, MoreHorizontal, Trash2, Edit2, FolderPlus, ArrowDownAZ
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -21,6 +21,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
   const [contextMenu, setContextMenu] = useState<{ id: string, x: number, y: number } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+
+  // Sorting State
+  const [sortOrder, setSortOrder] = useState<'none' | 'name'>('none');
+
+  // import { ArrowDownAZ, ... } from 'lucide-react'; // Need to update imports
 
   useEffect(() => {
     fetchDocuments();
@@ -46,12 +51,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
   };
 
   const buildTree = (parentId: string | null) => {
-    return documents
-      .filter(d => d.parentId === parentId)
-      .sort((a, b) => {
-        if (a.isFolder === b.isFolder) return a.title.localeCompare(b.title);
-        return a.isFolder ? -1 : 1;
-      });
+    const items = documents.filter(d => d.parentId === parentId);
+
+    // Always sort folders first for better UX, then optionally by name
+    return items.sort((a, b) => {
+      if (a.isFolder !== b.isFolder) {
+        return a.isFolder ? -1 : 1; // Folders always on top
+      }
+
+      if (sortOrder === 'name') {
+        return a.title.localeCompare(b.title);
+      }
+
+      // Default ('none'): maintain DB order (likely creation/update)
+      // Or explicit undefined order.
+      return 0;
+    });
   };
 
   // DnD State
@@ -187,6 +202,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
       <div className="p-3 border-b border-neutral-200 dark:border-neutral-800 flex justify-between items-center">
         <span className="font-semibold text-sm text-neutral-600 dark:text-neutral-300">내 문서</span>
         <div className="flex gap-1">
+          <button
+            onClick={() => setSortOrder(prev => prev === 'none' ? 'name' : 'none')}
+            className={`p-1 rounded text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-700 ${sortOrder === 'name' ? 'bg-neutral-200 dark:bg-neutral-700 text-blue-500' : ''}`}
+            title={sortOrder === 'name' ? '정렬 해제' : '가나다순 정렬'}
+          >
+            <ArrowDownAZ size={16} />
+          </button>
+          <div className="w-px h-4 bg-neutral-300 dark:bg-neutral-700 mx-1 self-center" />
           <button
             onClick={() => handleCreate(true)}
             className="p-1 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded text-neutral-500"
