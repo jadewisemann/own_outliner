@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { GripVertical, Trash2, ChevronRight, ChevronDown } from 'lucide-react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
+import { Trash2, ChevronRight, ChevronDown, MoreHorizontal } from 'lucide-react';
 import type { NodeId } from '@/types/outliner';
 import { useNodeLogic } from '@/hooks/node/useNodeLogic';
 
@@ -24,6 +24,21 @@ export const NodeShell: React.FC<NodeShellProps> = ({
     selectNode
   } = useNodeLogic(id);
 
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    if (isMenuOpen) {
+      window.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => window.removeEventListener('mousedown', handleOutsideClick);
+  }, [isMenuOpen]);
+
   // If node doesn't exist (deleted), return null
   if (!node) return null;
 
@@ -46,25 +61,34 @@ export const NodeShell: React.FC<NodeShellProps> = ({
         {/* Left Controls (Desktop Only - Hover) */}
         <div
           className="hidden md:flex items-center justify-end w-12 -ml-12 pr-1 h-7 mt-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-          contentEditable={false} // Prevent cursor entering here
+          contentEditable={false}
         >
-          <div className="flex items-center gap-0.5">
-            <button
-              className="p-0.5 text-slate-300 hover:text-slate-600 hover:bg-slate-200 rounded cursor-grab active:cursor-grabbing transition-colors"
-              title="Drag to move"
-            >
-              <GripVertical size={14} />
-            </button>
+          <div className="relative" ref={menuRef}>
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                deleteNode(id);
+                setIsMenuOpen(!isMenuOpen);
               }}
-              className="p-0.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-              title="Delete"
+              className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded transition-colors"
             >
-              <Trash2 size={14} />
+              <MoreHorizontal size={16} />
             </button>
+
+            {isMenuOpen && (
+              <div className="absolute left-0 top-6 w-32 bg-white border border-slate-200 rounded-lg shadow-xl z-50 py-1 animate-in fade-in zoom-in-95 duration-100">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteNode(id);
+                    setIsMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors text-left"
+                >
+                  <Trash2 size={13} />
+                  Delete
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
