@@ -83,8 +83,8 @@ export const NodeShell: React.FC<NodeShellProps> = ({
                 <div
                   className={`
                         rounded-full transition-all duration-300
-                        ${isCollapsed ? 'w-2 h-2 border-2 border-slate-400 bg-white' : 'w-1.5 h-1.5 bg-slate-300'}
-                        ${isFocused && !isCollapsed ? '!bg-blue-400 scale-125' : ''}
+                        ${isCollapsed ? 'w-2 h-2 bg-slate-400' : 'w-1.5 h-1.5 bg-slate-300'}
+                        ${isFocused ? '!bg-blue-400 scale-125' : ''}
                     `}
                 />
               </div>
