@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
+import { useOutlinerStore } from '@/store/useOutlinerStore';
 import { MobileToolbar } from '../editor/MobileToolbar';
 import { ChevronRight, Search, Settings } from 'lucide-react';
 
@@ -21,6 +22,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   onSettings
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { documents, activeDocumentId } = useOutlinerStore();
 
   return (
     <div className="flex h-screen bg-[#f8fafc] overflow-hidden selection:bg-yellow-200 selection:text-slate-900">
@@ -72,7 +74,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           </button>
 
           <div className="text-sm text-slate-400 flex items-center gap-2 flex-1">
-            <span className="text-slate-900 font-medium">Home</span>
+            <span className="text-slate-900 font-medium truncate">
+              {documents.find(d => d.id === activeDocumentId)?.title || 'No Document'}
+            </span>
           </div>
 
           {/* Right Actions: Search & Settings */}
