@@ -11,6 +11,7 @@ import { createSelectionSlice } from '@/store/slices/selectionSlice';
 import { createFocusSlice } from '@/store/slices/focusSlice';
 import { createSettingsSlice } from '@/store/slices/settingsSlice';
 import { createNavigationSlice } from '@/store/slices/navigationSlice';
+// import { v4 as uuidv4 } from 'uuid'; // Removed: DB generates UUIDs
 
 import { createAuthSlice } from '@/store/slices/authSlice';
 import { createSyncSlice } from '@/store/slices/syncSlice';
@@ -29,6 +30,12 @@ export const useOutlinerStore = create<OutlinerState>()(
                     ...createNavigationSlice(...a),
                     ...createAuthSlice(...a),
                     ...createSyncSlice(...a),
+
+
+                    // Multi-document State
+                    documents: [],
+                    activeDocumentId: null,
+
                     flashId: null,
                     backlinks: {},
 
@@ -43,69 +50,256 @@ export const useOutlinerStore = create<OutlinerState>()(
                         slashMenu: { ...prev.slashMenu, ...payload }
                     })),
 
+                    // Document Management Actions
+                    fetchDocuments: async () => {
+                        const state = get();
+                        if (!state.user) return;
+                        const { data, error } = await supabase
+                            .from('documents')
+                            .select('*')
+                            .eq('owner_id', state.user.id)
+                            .order('is_folder', { ascending: false })
+                            .order('title');
+
+                        if (error) {
+                            console.error('Error fetching documents:', error);
+                            return;
+                        }
+
+                        const docs = data.map(d => ({
+                            id: d.id,
+                            ownerId: d.owner_id,
+                            parentId: d.parent_id,
+                            title: d.title,
+                            isFolder: d.is_folder,
+                            // content: d.content, // heavy, don't load in list
+                            createdAt: d.created_at,
+                            updatedAt: d.updated_at
+                        }));
+
+                        set({ documents: docs });
+
+                        // Auto-select if no active document
+                        const s = get();
+                        if (!s.activeDocumentId && docs.length > 0) {
+                            // Find first non-folder or just first item?
+                            // Prefer file.
+                            const firstFile = docs.find(d => !d.isFolder);
+                            if (firstFile) {
+                                get().setActiveDocument(firstFile.id);
+                            } else if (docs.length > 0) {
+                                // Only folders? User needs to create doc. 
+                                // Or just select null and let UI handle?
+                                // Let's safe-guard: if we have docs, select one to show *something*.
+                                // But Sidebar handles selection. 
+                            }
+                        } else if (docs.length === 0) {
+                            // No documents at all? Create default.
+                            console.log("No documents found, creating default...");
+                            await get().createDocument('내 문서 (기본)');
+                        }
+                    },
+
+                    createDocument: async (title = 'Untitled', parentId = null, isFolder = false) => {
+                        const state = get();
+                        if (!state.user) return;
+
+                        const { data, error } = await supabase
+                            .from('documents')
+                            .insert({
+                                owner_id: state.user.id,
+                                parent_id: parentId,
+                                title,
+                                is_folder: isFolder,
+                                content: null
+                            })
+                            .select()
+                            .single();
+
+                        if (error) {
+                            console.error('Error creating document:', error);
+                            return;
+                        }
+
+                        await get().fetchDocuments();
+
+                        if (!isFolder) {
+                            get().setActiveDocument(data.id);
+                        }
+                    },
+
+                    deleteDocument: async (id) => {
+                        const { error } = await supabase.from('documents').delete().eq('id', id);
+                        if (error) {
+                            console.error('Error deleting document:', error);
+                            return;
+                        }
+                        await get().fetchDocuments();
+
+                        const state = get();
+                        if (state.activeDocumentId === id) {
+                            set({ activeDocumentId: null, nodes: {} });
+                        }
+                    },
+
+                    renameDocument: async (id, title) => {
+                        const { error } = await supabase
+                            .from('documents')
+                            .update({ title, updated_at: new Date().toISOString() })
+                            .eq('id', id);
+
+                        if (error) {
+                            console.error('Error renaming document:', error);
+                            return;
+                        }
+                        await get().fetchDocuments();
+                    },
+
+                    setActiveDocument: async (id) => {
+                        const state = get();
+                        if (state.activeDocumentId === id && state.provider) return; // Already active and connected
+                        if (!state.user) return;
+
+                        // 1. Cleanup existing
+                        if (state.provider) {
+                            state.provider.destroy();
+                        }
+
+                        // Create fresh doc
+                        const newDoc = new Y.Doc();
+
+                        // 2. Load Content from DB
+                        const { data } = await supabase
+                            .from('documents')
+                            .select('content')
+                            .eq('id', id)
+                            .single();
+
+                        if (data && data.content) {
+                            try {
+                                // Supabase returns bytea as Hex String or number array usually?
+                                // If using supabase-js, it might handle it. 
+                                // Let's check type. If string (hex), parse it. 
+                                // Actually supabase-js often returns string like "\x..." or just array.
+                                // Safe to assume we might need to handle it.
+                                let content = data.content;
+                                if (typeof content === 'string' && content.startsWith('\\x')) {
+                                    // parse hex
+                                    // Not implemented here, assuming standard bytea handling
+                                }
+                                // Assuming Supabase driver handles common formats or we treat as any
+                                let update: Uint8Array;
+                                if (typeof content === 'string') {
+                                    if (content.startsWith('\\x')) content = content.slice(2);
+                                    const match = content.match(/.{1,2}/g);
+                                    update = match ? new Uint8Array(match.map((byte: string) => parseInt(byte, 16))) : new Uint8Array();
+                                } else {
+                                    update = new Uint8Array(content);
+                                }
+
+                                Y.applyUpdate(newDoc, update);
+                            } catch (e) {
+                                console.warn("Failed to apply existing content, starting fresh.", e);
+                            }
+                        }
+
+                        set({
+                            activeDocumentId: id,
+                            nodes: {},
+                            doc: newDoc,
+                            provider: undefined
+                        });
+
+                        // 3. Initialize Sync
+                        const provider = new SupabaseProvider(newDoc, supabase, `room:${state.user.id}:${id}`);
+                        set({ provider });
+
+                        // 4. Persistence Listener (Debounced)
+                        let timer: ReturnType<typeof setTimeout> | null = null;
+                        newDoc.on('update', () => {
+                            if (timer) clearTimeout(timer);
+                            timer = setTimeout(() => {
+                                const fullState = Y.encodeStateAsUpdate(newDoc);
+                                // Convert to Hex String for Postgres bytea
+                                const hexContent = '\\x' + Array.from(fullState)
+                                    .map(b => b.toString(16).padStart(2, '0'))
+                                    .join('');
+
+                                supabase
+                                    .from('documents')
+                                    .update({
+                                        content: hexContent as any, // Supabase expects string for bytea usually
+                                        updated_at: new Date().toISOString()
+                                    })
+                                    .eq('id', id)
+                                    .then(({ error }) => {
+                                        if (error) console.error("Persistence Error", error);
+                                        else console.log("Document saved to DB");
+                                    });
+                            }, 2000);
+                        });
+
+                        // 5. Connect Nodes State
+                        const yNodes = newDoc.getMap<any>('nodes');
+                        const updateNodes = () => {
+                            const nodesMap: Record<string, NodeData> = {};
+                            yNodes.forEach((content: any, id: string) => {
+                                nodesMap[id] = (content && typeof content.toJSON === 'function') ? content.toJSON() : content;
+                            });
+                            set({ nodes: nodesMap });
+                        };
+
+                        yNodes.observeDeep(updateNodes);
+
+                        // Bootstrap Root Node if missing (New Document)
+                        if (!yNodes.has('root')) {
+                            const rootNode: NodeData = {
+                                id: 'root',
+                                content: '', // Title is in document meta, root content usually empty or 'Root'
+                                parentId: null,
+                                children: [],
+                                isCollapsed: false,
+                                type: 'text',
+                                createdAt: Date.now(),
+                                updatedAt: Date.now()
+                            };
+
+                            newDoc.transact(() => {
+                                const nodeMap = new Y.Map();
+                                nodeMap.set('id', rootNode.id);
+                                nodeMap.set('content', rootNode.content);
+                                nodeMap.set('parentId', rootNode.parentId);
+                                nodeMap.set('children', new Y.Array());
+                                nodeMap.set('isCollapsed', rootNode.isCollapsed);
+                                nodeMap.set('type', rootNode.type);
+                                nodeMap.set('createdAt', rootNode.createdAt);
+                                nodeMap.set('updatedAt', rootNode.updatedAt);
+                                yNodes.set('root', nodeMap);
+                            });
+                        }
+
+                        updateNodes(); // Initial sync from YDoc to Local
+                    },
+
+                    // Yjs State
+
                     // Yjs State
                     doc: new Y.Doc(),
                     provider: undefined,
 
                     initializeSync: async () => {
+                        // Deprecated: use setActiveDocument. 
+                        // But we keep it as a no-op or proxy if referenced.
                         const state = get();
-                        if (!state.user) return;
-                        if (state.provider) return; // already valid
-
-                        const doc = state.doc as Y.Doc;
-                        const yNodes = doc.getMap<any>('nodes');
-
-                        // Hydrate YDoc from local state if YDoc is empty but local nodes exist
-                        // This handles the case where we reload page but YDoc is in-memory only
-                        if (state.nodes && Object.keys(state.nodes).length > 0 && Array.from(yNodes.keys()).length === 0) {
-                            console.log('Hydrating YDoc from local state...');
-                            doc.transact(() => {
-                                Object.values(state.nodes).forEach(node => {
-                                    const nodeMap = new Y.Map();
-                                    nodeMap.set('id', node.id);
-                                    nodeMap.set('content', node.content);
-                                    nodeMap.set('parentId', node.parentId);
-                                    nodeMap.set('isCollapsed', node.isCollapsed);
-                                    nodeMap.set('updatedAt', node.updatedAt || Date.now());
-
-                                    const childrenArray = new Y.Array();
-                                    if (node.children && node.children.length > 0) {
-                                        childrenArray.push(node.children);
-                                    }
-                                    nodeMap.set('children', childrenArray);
-
-                                    yNodes.set(node.id, nodeMap);
-                                });
-                            });
+                        if (state.activeDocumentId && !state.provider) {
+                            state.setActiveDocument(state.activeDocumentId);
                         }
-
-                        const provider = new SupabaseProvider(doc, supabase, `room:${state.user.id}`);
-
-                        set({ provider });
-
-
-                        // Use observeDeep to catch nested changes (content updates, children array changes)
-                        yNodes.observeDeep(() => {
-                            // console.log('Yjs Deep Update Detected');
-                            // When Yjs updates, we update Local State to trigger Re-render
-                            const nodesMap: Record<string, NodeData> = {};
-                            yNodes.forEach((content: any, id: string) => {
-                                // Convert Yjs types (Y.Map, Y.Array) to plain JSON for Zustand
-                                nodesMap[id] = (content && typeof content.toJSON === 'function') ? content.toJSON() : content;
-                            });
-
-                            // If empty (new doc), we might not want to overwrite if we have local data?
-                            // Strategy: Yjs is source of truth.
-                            if (Object.keys(nodesMap).length > 0) {
-                                set({ nodes: nodesMap });
-                            }
-                        });
                     }
                 };
             },
             {
                 name: 'outliner-storage',
-                version: 8,
+                version: 9, // Bump version
                 migrate: (persistedState: unknown, version: number) => {
                     let state = persistedState as OutlinerState;
                     // ... migration logic preserved ...
@@ -113,6 +307,15 @@ export const useOutlinerStore = create<OutlinerState>()(
                         // ... legacy migrations ...
                         state.backlinks = {};
                     }
+
+                    // Doc Management Migration (Version 9) - Removed legacy migration for DB sync
+                    if (version < 9) {
+                        // We do not create local default docs anymore.
+                        // state.documents should be empty initially, populated by fetch.
+                        state.documents = [];
+                        state.activeDocumentId = null;
+                    }
+
                     return state;
                 },
                 partialize: (state) => {
@@ -136,7 +339,8 @@ export const useOutlinerStore = create<OutlinerState>()(
                 onRehydrateStorage: () => (state) => {
                     if (state) {
                         state.selectedIds = [];
-                        // state.doc = new Y.Doc(); // Recheck if needed
+                        // Ensure we have at least one doc if somehow empty after rehydrate?
+                        // No, let migrate handle it.
                     }
                 },
             }
@@ -147,7 +351,9 @@ export const useOutlinerStore = create<OutlinerState>()(
             // Ideally Yjs handles undo/redo via Y.UndoManager. 
             // But for now keeping zundo is fine if we only watch 'nodes'.
             partialize: (state) => {
-                const { doc, provider, ...rest } = state;
+                const { doc, provider, documents, activeDocumentId, ...rest } = state;
+                // Exclude documents/activeID from UNDO history? 
+                // Yes, switching doc should not be undoable via zundo usually, or it complicates things.
                 return rest;
             }
         }

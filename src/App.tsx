@@ -83,7 +83,7 @@ function App() {
     initializeSync(); // Starts Yjs provider
   }, [user, initializeSync]);
 
-  if (!rootNode) return <div className="p-10 text-slate-400">Loading...</div>;
+  // if (!rootNode) return <div className="p-10 text-slate-400">Loading...</div>; // Moved inside
 
   if (!user) {
     return <LoginModal />;
@@ -93,7 +93,7 @@ function App() {
   const handleAddNode = () => {
     // Add to bottom or focused? 
     // Default to adding to root at end if no focus, or handled by addNode logic
-    addNode(activeRootId);
+    if (activeRootId) addNode(activeRootId);
   };
 
   const handleIndent = () => {
@@ -111,40 +111,39 @@ function App() {
       onSearch={() => setIsSearchOpen(true)}
       onSettings={() => setIsSettingsOpen(true)}
     >
-
-
-      {hoistedNodeId && (
-        <div className="mb-8 text-sm text-slate-400 flex items-center gap-1">
-          <span className="cursor-pointer hover:text-slate-600 hover:underline" onClick={() => setHoistedNode(null)}>Root</span>
-          <span>/</span>
-          <span className="font-medium text-slate-800">{rootNode.content || 'Untitled'}</span>
-        </div>
-      )}
-
-      {flatNodes.length === 0 ? (
-        <div
-          className="text-slate-400 italic cursor-pointer hover:bg-slate-50 p-2 rounded"
-          onClick={() => addNode(activeRootId)}
-        >
-          Click to start typing...
+      {!rootNode ? (
+        <div className="flex flex-col items-center justify-center h-full text-slate-400">
+          <p>문서를 선택하거나 새로 만드세요.</p>
         </div>
       ) : (
-        <Virtuoso
-          ref={virtuosoRef}
-          useWindowScroll
-          data={flatNodes}
-          itemContent={(_, node) => (
-            <NodeItem key={node.id} id={node.id} level={node.level} />
+        <>
+          {hoistedNodeId && (
+            <div className="mb-8 text-sm text-slate-400 flex items-center gap-1">
+              <span className="cursor-pointer hover:text-slate-600 hover:underline" onClick={() => setHoistedNode(null)}>Root</span>
+              <span>/</span>
+              <span className="font-medium text-slate-800">{rootNode.content || 'Untitled'}</span>
+            </div>
           )}
-        />
-      )}
 
-      <div
-        className="mt-8 text-slate-400 text-sm italic cursor-text hover:text-slate-600 opacity-0 hover:opacity-100 transition-opacity"
-        onClick={() => addNode(activeRootId)}
-      >
-        Click here to add a block...
-      </div>
+          {flatNodes.length === 0 ? (
+            <div
+              className="text-slate-400 italic cursor-pointer hover:bg-slate-50 p-2 rounded"
+              onClick={() => addNode(activeRootId)}
+            >
+              Click to start typing...
+            </div>
+          ) : (
+            <Virtuoso
+              ref={virtuosoRef}
+              useWindowScroll
+              data={flatNodes}
+              itemContent={(_, node) => (
+                <NodeItem key={node.id} id={node.id} level={node.level} />
+              )}
+            />
+          )}
+        </>
+      )}
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
