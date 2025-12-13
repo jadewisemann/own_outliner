@@ -1,3 +1,4 @@
+
 import { useOutlinerStore } from '@/store/useOutlinerStore';
 import type { NodeId } from '@/types/outliner';
 import { useCallback } from 'react';
@@ -8,11 +9,15 @@ export const useNodeLogic = (id: NodeId) => {
     const selectedIds = useOutlinerStore((state) => state.selectedIds);
     const focusCursorPos = useOutlinerStore((state) => state.focusCursorPos);
 
+    // We export these selectors for components to use directly if needed, 
+    // or they can use useOutlinerStore directly.
+    // But consistent with previous logic, we return them.
     const isSelected = selectedIds.includes(id);
     const isFocused = focusedId === id;
-
     // Actions
     const updateContent = useOutlinerStore((state) => state.updateContent);
+    const updateType = useOutlinerStore((state) => state.updateType);
+    const toggleComplete = useOutlinerStore((state) => state.toggleComplete);
     const toggleCollapse = useOutlinerStore((state) => state.toggleCollapse);
     const setFocus = useOutlinerStore((state) => state.setFocus);
     const deleteNode = useOutlinerStore((state) => state.deleteNode);
@@ -24,6 +29,7 @@ export const useNodeLogic = (id: NodeId) => {
     const selectNode = useOutlinerStore((state) => state.selectNode);
     const deselectAll = useOutlinerStore((state) => state.deselectAll);
     const expandSelection = useOutlinerStore((state) => state.expandSelection);
+    const setSlashMenu = useOutlinerStore((state) => state.setSlashMenu);
     const setHoistedNode = useOutlinerStore((state) => state.setHoistedNode);
 
     // Convenience wrapper for setFocus to handle event stopping if needed, though usually done in UI
@@ -42,6 +48,9 @@ export const useNodeLogic = (id: NodeId) => {
         focusCursorPos,
         // Actions
         updateContent,
+        updateType,
+        toggleComplete,
+        setSlashMenu, // New action
         toggleCollapse,
         setFocus,
         handleFocus,
