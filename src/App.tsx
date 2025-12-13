@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { debounce } from 'lodash-es';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { useOutlinerStore } from './store/useOutlinerStore';
 import { NodeItem } from './components/NodeItem';
@@ -94,10 +95,6 @@ function App() {
 
   // if (!rootNode) return <div className="p-10 text-slate-400">Loading...</div>; // Moved inside
 
-  if (!user) {
-    return <LoginModal />;
-  }
-
   // Mobile Toolbar Handlers
   const handleAddNode = () => {
     // Add to bottom or focused? 
@@ -112,29 +109,59 @@ function App() {
     if (focusedId) outdentNode(focusedId);
   };
 
-  // Header Inputs
+  // Header Inputs - MOVING HOOKS UP
   const documents = useOutlinerStore((state) => state.documents);
   const activeDocumentId = useOutlinerStore((state) => state.activeDocumentId);
-  const renameDocument = useOutlinerStore((state) => state.renameDocument);
-  const updateContent = useOutlinerStore((state) => state.updateContent);
   const setFocus = useOutlinerStore((state) => state.setFocus);
 
   const activeDocument = documents.find(d => d.id === activeDocumentId);
   const headerInputRef = useRef<HTMLInputElement>(null);
 
-  // Title Logic
-  const getHeaderTitle = () => {
-    if (hoistedNodeId && rootNode) {
-      return rootNode.content; // Zoomed node content
+  // Title Logic (Local State for smooth typing + Debounce for DB)
+  const currentTitle = hoistedNodeId && rootNode ? rootNode.content : (activeDocument?.title || '');
+  const [localTitle, setLocalTitle] = useState(currentTitle);
+  const isTitleDirty = useRef(false);
+
+  // Sync localTitle 
+  useEffect(() => {
+    if (!isTitleDirty.current) {
+      setLocalTitle(currentTitle);
     }
-    return activeDocument?.title || '';
-  };
+  }, [currentTitle]);
+
+  // Reset dirty flag when switching context (Zoom in/out or Doc switch)
+  useEffect(() => {
+    isTitleDirty.current = false;
+    setLocalTitle(currentTitle); // Instant sync to new context
+  }, [hoistedNodeId, activeDocumentId]);
+
+  // Debounced Save for Document Rename ONLY
+  const debouncedRename = useRef(
+    debounce((id: string, title: string) => {
+      useOutlinerStore.getState().renameDocument(id, title);
+    }, 500)
+  ).current;
+
+  // Clean up debounce
+  useEffect(() => {
+    return () => {
+      debouncedRename.cancel();
+    };
+  }, [debouncedRename]);
 
   const handleTitleChange = (newTitle: string) => {
+    setLocalTitle(newTitle);
+    isTitleDirty.current = true;
+
     if (hoistedNodeId && rootNode) {
-      updateContent(rootNodeId, newTitle); // Update zoomed node content
+      // Direct update for Node Content (No Debounce requested)
+      useOutlinerStore.getState().updateContent(hoistedNodeId, newTitle); // Fixed: Use hoistedNodeId
+      // We should also set isTitleDirty to false immediately if we want rapid updates to reflect? 
+      // Actually `updateContent` updates Yjs -> triggers store update -> `currentTitle` changes -> effect runs.
+      // But since we are typing, `isTitleDirty` is true, so effect won't overwrite us. Good.
     } else if (activeDocumentId) {
-      renameDocument(activeDocumentId, newTitle); // Rename document
+      // Debounce for Document Rename
+      debouncedRename(activeDocumentId, newTitle);
     }
   };
 
@@ -157,9 +184,17 @@ function App() {
     </span>
   ) : null;
 
+  // -- EARLY RETURNS AFTER HOOKS --
+
+  // if (!rootNode) return <div className="p-10 text-slate-400">Loading...</div>; // Moved inside
+
+  if (!user) {
+    return <LoginModal />;
+  }
+
   return (
     <MainLayout
-      title={getHeaderTitle()}
+      title={localTitle}
       onTitleChange={handleTitleChange}
       onTitleKeyDown={handleTitleKeyDown}
       headerInputRef={headerInputRef}
