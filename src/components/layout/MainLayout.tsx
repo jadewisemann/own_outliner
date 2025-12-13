@@ -35,12 +35,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         {/* Top Header / Breadcrumbs (Desktop) - Optional in this layout if integrated elsewhere */}
         <div className="sticky top-0 z-10 bg-[#f8fafc]/80 backdrop-blur-md h-14 flex items-center px-4 md:px-8 border-b border-transparent md:border-slate-100/50 transition-colors">
           <div className="text-sm text-slate-400 flex items-center gap-2">
-            <span className="hover:text-slate-600 cursor-pointer">Workspace</span>
-            <span>/</span>
-            <span className="text-slate-900 font-medium">Project Alpha</span>
-          </div>
-          <div className="ml-auto text-xs text-slate-400 hidden md:block">
-            Last edited just now
+            <span className="text-slate-900 font-medium">Home</span>
           </div>
         </div>
 

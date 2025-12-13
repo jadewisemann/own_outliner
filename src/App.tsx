@@ -109,12 +109,7 @@ function App() {
       onIndent={handleIndent}
       onOutdent={handleOutdent}
     >
-      {/* Cover Image Placeholder */}
-      <div className="w-full h-48 rounded-xl bg-gradient-to-r from-blue-100 to-indigo-100 mb-8 opacity-50 group relative overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <button className="bg-white/90 shadow-sm px-3 py-1 rounded text-xs font-medium text-slate-600">Change Cover</button>
-        </div>
-      </div>
+
 
       {hoistedNodeId && (
         <div className="mb-8 text-sm text-slate-400 flex items-center gap-1">

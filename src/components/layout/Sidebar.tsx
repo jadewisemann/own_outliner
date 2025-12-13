@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Plus, Calendar, Star, Settings, ChevronLeft, Hash } from 'lucide-react';
+import { Search, Plus, Settings, ChevronLeft } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -47,20 +47,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle }) => {
 
         <div className="space-y-0.5">
           <SidebarItem icon={Plus} label="New Page" active={false} />
-          <SidebarItem icon={Star} label="Favorites" active={false} />
-          <SidebarItem icon={Calendar} label="Timeline" active={false} />
         </div>
 
-        <div>
-          <div className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Workspace</div>
-          <div className="space-y-0.5">
-            <SidebarItem icon={Hash} label="Project Alpha" active={true} />
-            <SidebarItem icon={Hash} label="Marketing Q4" active={false} />
-            <SidebarItem icon={Hash} label="Personal Goals" active={false} />
-            <SidebarItem icon={Hash} label="Reading List" active={false} />
-          </div>
-        </div>
-
+        {/* 
+            <div>
+                <div className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Workspace</div>
+                <div className="space-y-0.5">
+                    <SidebarItem icon={Hash} label="All Notes" active={true} />
+                </div>
+            </div>
+            */}
       </nav>
 
       {/* Footer */}
