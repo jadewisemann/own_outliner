@@ -13,8 +13,10 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.87.1",
     "@tailwindcss/postcss": "^4.1.17",
+    "@types/lodash-es": "^4.17.12",
     "clsx": "^2.1.1",
     "lib0": "^0.2.114",
+    "lodash-es": "^4.17.21",
     "lucide-react": "^0.556.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
