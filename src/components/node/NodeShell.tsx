@@ -48,7 +48,7 @@ export const NodeShell: React.FC<NodeShellProps> = ({
   return (
     <div
       className={`oo-node-shell group relative select-none transition-colors duration-200
-                ${isSelected ? 'bg-blue-50/80 -ml-2 pl-2 rounded-lg' : ''}
+                ${isSelected ? 'bg-blue-50/80 rounded-lg' : ''}
             `}
       style={{
         paddingLeft: isSelected ? `${level * 24}px` : `${level * 24}px`
