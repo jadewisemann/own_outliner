@@ -83,6 +83,7 @@ export interface OutlinerState {
     createDocument: (title: string, parentId?: string | null, isFolder?: boolean) => Promise<void>;
     deleteDocument: (id: string) => Promise<void>;
     renameDocument: (id: string, title: string) => Promise<void>;
+    moveDocument: (id: string, newParentId: string | null) => Promise<void>;
     setActiveDocument: (id: string) => Promise<void>;
     fetchDocuments: () => Promise<void>;
 
@@ -108,7 +109,7 @@ export interface OutlinerState {
     outdentNode: (id: NodeId) => void;
     indentNodes: (ids: NodeId[]) => void;
     outdentNodes: (ids: NodeId[]) => void;
-    moveFocus: (direction: 'up' | 'down', select?: boolean) => void;
+    moveFocus: (direction: 'up' | 'down', select?: boolean) => boolean;
     moveNode: (id: NodeId, direction: 'up' | 'down') => void;
     setHoistedNode: (id: NodeId | null) => void;
 

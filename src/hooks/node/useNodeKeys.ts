@@ -48,7 +48,11 @@ const handleCommonActions = (e: React.KeyboardEvent, keys: any, state: any, id: 
 const handleFocusNavigation = (e: React.KeyboardEvent, keys: any, state: any) => {
     if (e.key === 'ArrowUp' && !isMatch(e, keys.moveUp)) {
         e.preventDefault();
-        state.moveFocus('up', e.shiftKey);
+        const success = state.moveFocus('up', e.shiftKey);
+        if (!success && !e.shiftKey) {
+            // Dispatch event to focus header
+            document.dispatchEvent(new CustomEvent('outliner:focus-header'));
+        }
         return true;
     }
     if (e.key === 'ArrowDown' && !isMatch(e, keys.moveDown)) {

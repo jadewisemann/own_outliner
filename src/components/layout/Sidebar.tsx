@@ -54,15 +54,69 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
       });
   };
 
+  // DnD State
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  const { moveDocument } = useOutlinerStore();
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.stopPropagation();
+    setDraggedId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    // Set transparent image or rely on default
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string, isFolder: boolean) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!draggedId || draggedId === id) return;
+
+    // Prevent dropping into self or children (simple check: if I am your parent... wait, need full tree check for cycle)
+    // For now, just simplistic check
+    if (isFolder) {
+      setDragOverId(id);
+      e.dataTransfer.dropEffect = 'move';
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverId(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetId: string | null) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverId(null);
+    if (!draggedId || draggedId === targetId) return;
+
+    console.log(`Moving ${draggedId} to ${targetId || 'root'}`);
+    await moveDocument(draggedId, targetId);
+    setDraggedId(null);
+  };
+
   const renderItem = (item: Document, depth: number = 0) => {
     const isExpanded = expandedFolders[item.id];
     const isActive = activeDocumentId === item.id;
     const isEditing = editingId === item.id;
+    const isDragOver = dragOverId === item.id;
+    const isDragging = draggedId === item.id;
 
     return (
       <div key={item.id} className="select-none">
         <div
-          className={`flex items-center group px-2 py-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer ${isActive ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : ''}`}
+          draggable={!isEditing}
+          onDragStart={(e) => handleDragStart(e, item.id)}
+          onDragOver={(e) => handleDragOver(e, item.id, item.isFolder)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e, item.id)}
+          className={`flex items-center group px-2 py-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer 
+            ${isActive ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : ''}
+            ${isDragOver ? 'bg-blue-100 dark:bg-blue-800/40 outline outline-2 outline-blue-500 -outline-offset-2' : ''}
+            ${isDragging ? 'opacity-50' : ''}
+          `}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
           onClick={() => {
             if (item.isFolder) {
@@ -150,7 +204,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-2">
+      <div
+        className="flex-1 overflow-y-auto py-2"
+        onDragOver={(e) => {
+          e.preventDefault();
+          // Allow dropping on empty space to move to root
+          e.dataTransfer.dropEffect = 'move';
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          // If dropped on root container (not handled by item stopPropagation), move to root
+          if (draggedId) {
+            moveDocument(draggedId, null);
+            setDraggedId(null);
+          }
+        }}
+      >
         {buildTree(null).map(item => renderItem(item))}
       </div>
 

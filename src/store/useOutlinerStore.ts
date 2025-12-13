@@ -155,6 +155,19 @@ export const useOutlinerStore = create<OutlinerState>()(
                         await get().fetchDocuments();
                     },
 
+                    moveDocument: async (id, newParentId) => {
+                        const { error } = await supabase
+                            .from('documents')
+                            .update({ parent_id: newParentId, updated_at: new Date().toISOString() })
+                            .eq('id', id);
+
+                        if (error) {
+                            console.error('Error moving document:', error);
+                            return;
+                        }
+                        await get().fetchDocuments();
+                    },
+
                     setActiveDocument: async (id) => {
                         const state = get();
                         if (state.activeDocumentId === id && state.provider) return; // Already active and connected

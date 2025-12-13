@@ -63,8 +63,17 @@ function App() {
       }
     };
 
+    const handleFocusHeader = () => {
+      headerInputRef.current?.focus();
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('outliner:focus-header', handleFocusHeader);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('outliner:focus-header', handleFocusHeader);
+    };
   }, [settings.keybindings]);
 
   // Auth Initialization
@@ -103,8 +112,58 @@ function App() {
     if (focusedId) outdentNode(focusedId);
   };
 
+  // Header Inputs
+  const documents = useOutlinerStore((state) => state.documents);
+  const activeDocumentId = useOutlinerStore((state) => state.activeDocumentId);
+  const renameDocument = useOutlinerStore((state) => state.renameDocument);
+  const updateContent = useOutlinerStore((state) => state.updateContent);
+  const setFocus = useOutlinerStore((state) => state.setFocus);
+
+  const activeDocument = documents.find(d => d.id === activeDocumentId);
+  const headerInputRef = useRef<HTMLInputElement>(null);
+
+  // Title Logic
+  const getHeaderTitle = () => {
+    if (hoistedNodeId && rootNode) {
+      return rootNode.content; // Zoomed node content
+    }
+    return activeDocument?.title || '';
+  };
+
+  const handleTitleChange = (newTitle: string) => {
+    if (hoistedNodeId && rootNode) {
+      updateContent(rootNodeId, newTitle); // Update zoomed node content
+    } else if (activeDocumentId) {
+      renameDocument(activeDocumentId, newTitle); // Rename document
+    }
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown' || e.key === 'Enter') {
+      e.preventDefault();
+      // Focus first visible node
+      if (flatNodes.length > 0) {
+        setFocus(flatNodes[0].id);
+      } else if (activeRootId) {
+        // If empty, create first node
+        addNode(activeRootId);
+      }
+    }
+  };
+
+  const breadcrumbs = hoistedNodeId ? (
+    <span className="cursor-pointer hover:text-slate-700 hover:underline" onClick={() => setHoistedNode(null)}>
+      {activeDocument?.title || 'Home'}
+    </span>
+  ) : null;
+
   return (
     <MainLayout
+      title={getHeaderTitle()}
+      onTitleChange={handleTitleChange}
+      onTitleKeyDown={handleTitleKeyDown}
+      headerInputRef={headerInputRef}
+      breadcrumbs={breadcrumbs}
       onAddNode={handleAddNode}
       onIndent={handleIndent}
       onOutdent={handleOutdent}
@@ -117,13 +176,7 @@ function App() {
         </div>
       ) : (
         <>
-          {hoistedNodeId && (
-            <div className="mb-8 text-sm text-slate-400 flex items-center gap-1">
-              <span className="cursor-pointer hover:text-slate-600 hover:underline" onClick={() => setHoistedNode(null)}>Root</span>
-              <span>/</span>
-              <span className="font-medium text-slate-800">{rootNode.content || 'Untitled'}</span>
-            </div>
-          )}
+          {/* Hoisted Node Indicator removed from here as it is now in header */}
 
           {flatNodes.length === 0 ? (
             <div

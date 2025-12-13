@@ -7,7 +7,7 @@ export interface FocusSlice {
     focusCursorPos: number | null;
 
     setFocus: (id: NodeId | null, cursorPos?: number | null) => void;
-    moveFocus: (direction: 'up' | 'down', select?: boolean) => void;
+    moveFocus: (direction: 'up' | 'down', select?: boolean) => boolean;
 }
 
 export const createFocusSlice: StateCreator<OutlinerState, [], [], FocusSlice> = (set, get) => ({
@@ -18,7 +18,7 @@ export const createFocusSlice: StateCreator<OutlinerState, [], [], FocusSlice> =
 
     moveFocus: (direction, select = false) => {
         const state = get();
-        if (!state.focusedId && !state.rootNodeId) return;
+        if (!state.focusedId && !state.rootNodeId) return false;
 
         const flattenVisibleNodes = (nodeId: NodeId, list: NodeId[]) => {
             const node = state.nodes[nodeId];
@@ -44,7 +44,7 @@ export const createFocusSlice: StateCreator<OutlinerState, [], [], FocusSlice> =
 
         if (currentIndex === -1 && flatList.length > 0) {
             set({ focusedId: flatList[0] });
-            return;
+            return true;
         }
 
         let nextIndex = currentIndex;
@@ -76,6 +76,9 @@ export const createFocusSlice: StateCreator<OutlinerState, [], [], FocusSlice> =
             } else {
                 set({ focusedId: nextId, selectedIds: [], selectionAnchorId: null });
             }
+            return true;
         }
+
+        return false;
     },
 });

@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
-import { useOutlinerStore } from '@/store/useOutlinerStore';
+// import { useOutlinerStore } from '@/store/useOutlinerStore'; 
 import { MobileToolbar } from '../editor/MobileToolbar';
 import { ChevronRight, Search, Settings } from 'lucide-react';
 
 interface MainLayoutProps {
   children: React.ReactNode;
+  title: string;
+  onTitleChange: (newTitle: string) => void;
+  onTitleKeyDown?: (e: React.KeyboardEvent) => void;
+  headerInputRef?: React.RefObject<HTMLInputElement | null>;
+  breadcrumbs?: React.ReactNode;
   onAddNode?: () => void;
   onIndent?: () => void;
   onOutdent?: () => void;
@@ -15,6 +20,11 @@ interface MainLayoutProps {
 
 export const MainLayout: React.FC<MainLayoutProps> = ({
   children,
+  title,
+  onTitleChange,
+  onTitleKeyDown,
+  headerInputRef,
+  breadcrumbs,
   onAddNode = () => { },
   onIndent = () => { },
   onOutdent = () => { },
@@ -22,7 +32,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   onSettings
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { documents, activeDocumentId } = useOutlinerStore();
 
   return (
     <div className="flex h-screen bg-[#f8fafc] overflow-hidden selection:bg-yellow-200 selection:text-slate-900">
@@ -46,15 +55,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       {/* Main Content */}
       <main className="flex-1 h-full overflow-y-auto relative scroll-smooth">
         {/* Top Header / Breadcrumbs (Desktop) - Optional in this layout if integrated elsewhere */}
-        <div className="sticky top-0 z-10 bg-[#f8fafc]/80 backdrop-blur-md h-12 flex items-center px-4 md:px-8 border-b border-transparent md:border-slate-100/50 transition-colors">
+        <div className="sticky top-0 z-10 bg-[#f8fafc]/80 backdrop-blur-md h-14 flex items-center px-4 md:px-8 border-b border-transparent md:border-slate-100/50 transition-colors">
 
           {/* Logo & Title */}
-          <div className="flex items-center gap-2 font-semibold text-slate-700 mr-4">
+          {/* <div className="flex items-center gap-2 font-semibold text-slate-700 mr-4">
             <div className="w-5 h-5 bg-slate-900 rounded-md flex items-center justify-center">
               <span className="text-white text-[10px] font-bold">O</span>
-            </div>
-            <span className="hidden md:inline text-sm">Own Outliner</span>
-          </div>
+            </div> 
+             <span className="hidden md:inline text-sm">Own Outliner</span> 
+          </div> */}
 
           {/* Sidebar Toggle for Desktop (when closed) & Mobile */}
           <button
@@ -73,10 +82,24 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             <ChevronRight size={18} />
           </button>
 
-          <div className="text-sm text-slate-400 flex items-center gap-2 flex-1">
-            <span className="text-slate-900 font-medium truncate">
-              {documents.find(d => d.id === activeDocumentId)?.title || 'No Document'}
-            </span>
+          {/* Breadcrumbs (if any) */}
+          {breadcrumbs && (
+            <div className="flex items-center mr-2 text-sm text-slate-500">
+              {breadcrumbs}
+              <span className="mx-2 text-slate-300">/</span>
+            </div>
+          )}
+
+          <div className="flex-1 min-w-0">
+            <input
+              ref={headerInputRef}
+              type="text"
+              value={title}
+              onChange={(e) => onTitleChange(e.target.value)}
+              onKeyDown={onTitleKeyDown}
+              className="w-full bg-transparent text-lg font-bold text-slate-900 placeholder-slate-400 outline-none truncate"
+              placeholder="Untitled"
+            />
           </div>
 
           {/* Right Actions: Search & Settings */}
