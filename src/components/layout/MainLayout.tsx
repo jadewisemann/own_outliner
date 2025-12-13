@@ -1,20 +1,24 @@
 import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { MobileToolbar } from '../editor/MobileToolbar';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Search, Settings } from 'lucide-react';
 
 interface MainLayoutProps {
   children: React.ReactNode;
   onAddNode?: () => void;
   onIndent?: () => void;
   onOutdent?: () => void;
+  onSearch?: () => void;
+  onSettings?: () => void;
 }
 
 export const MainLayout: React.FC<MainLayoutProps> = ({
   children,
   onAddNode = () => { },
   onIndent = () => { },
-  onOutdent = () => { }
+  onOutdent = () => { },
+  onSearch,
+  onSettings
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -61,8 +65,26 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             <ChevronRight size={18} />
           </button>
 
-          <div className="text-sm text-slate-400 flex items-center gap-2">
+          <div className="text-sm text-slate-400 flex items-center gap-2 flex-1">
             <span className="text-slate-900 font-medium">Home</span>
+          </div>
+
+          {/* Right Actions: Search & Settings */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onSearch}
+              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded transition-colors"
+              title="Search (Cmd+K)"
+            >
+              <Search size={18} />
+            </button>
+            <button
+              onClick={onSettings}
+              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded transition-colors"
+              title="Settings"
+            >
+              <Settings size={18} />
+            </button>
           </div>
         </div>
 

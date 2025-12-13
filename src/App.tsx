@@ -108,6 +108,8 @@ function App() {
       onAddNode={handleAddNode}
       onIndent={handleIndent}
       onOutdent={handleOutdent}
+      onSearch={() => setIsSearchOpen(true)}
+      onSettings={() => setIsSettingsOpen(true)}
     >
 
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Plus, Settings, ChevronLeft } from 'lucide-react';
+import { Search, Plus, ChevronLeft } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -23,16 +23,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle }) => {
         </button>
       </div>
 
-      {/* Quick Actions */}
-      <div className="p-3">
+      {/* Quick Actions (Workspace Search Placeholder) */}
+      <div className={`p-3 transition-opacity duration-200 ${isOpen ? 'opacity-100' : 'opacity-0 hidden md:block'}`}>
         <div className="relative group">
-          <Search size={14} className="absolute left-3 top-2.5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-          <input
-            type="text"
-            placeholder="Search..."
-            className="w-full bg-slate-100 text-sm py-2 pl-9 pr-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-400"
-          />
-          <div className="absolute right-2 top-2 px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] text-slate-400 hidden group-hover:block shadow-sm">⌘K</div>
+          <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
+          <div className="w-full bg-slate-100 text-sm py-2 pl-9 pr-3 rounded-lg text-slate-400 cursor-not-allowed select-none">
+            Workspace Search...
+          </div>
         </div>
       </div>
 
@@ -42,24 +39,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle }) => {
         <div className="space-y-0.5">
           <SidebarItem icon={Plus} label="New Page" active={false} />
         </div>
-
-        {/* 
-            <div>
-                <div className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Workspace</div>
-                <div className="space-y-0.5">
-                    <SidebarItem icon={Hash} label="All Notes" active={true} />
-                </div>
-            </div>
-            */}
       </nav>
-
-      {/* Footer */}
-      <div className="p-4 border-t border-slate-100">
-        <button className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-colors w-full">
-          <Settings size={16} />
-          <span>Settings</span>
-        </button>
-      </div>
     </aside>
   );
 };
