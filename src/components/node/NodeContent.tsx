@@ -124,12 +124,12 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id }) => {
                     const val = e.target.value;
                     updateContent(id, val);
                     if (val === '/') {
-                         const rect = e.target.getBoundingClientRect();
-                         setSlashMenu({
-                             isOpen: true,
-                             position: { x: rect.left, y: rect.bottom },
-                             targetNodeId: id
-                         });
+                        const rect = e.target.getBoundingClientRect();
+                        setSlashMenu({
+                            isOpen: true,
+                            position: { x: rect.left, y: rect.bottom },
+                            targetNodeId: id
+                        });
                     }
                 }}
                 onKeyDown={handleKeyDown}
