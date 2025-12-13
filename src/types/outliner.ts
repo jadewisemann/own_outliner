@@ -1,11 +1,16 @@
 export type NodeId = string;
 
+export type NodeType = 'text' | 'h1' | 'h2' | 'h3' | 'todo' | 'code' | 'quote' | 'link';
+
 export interface NodeData {
     id: NodeId;
     content: string;
     parentId: NodeId | null;
     children: NodeId[];
     isCollapsed: boolean;
+    type?: NodeType;
+    completed?: boolean;
+    meta?: Record<string, any>; // For code params, link images, etc.
     createdAt?: number; // Unix timestamp
     updatedAt?: number; // Unix timestamp
 }
@@ -59,10 +64,20 @@ export interface OutlinerState {
     flashId: NodeId | null;
     backlinks: Record<NodeId, NodeId[]>; // TargetID -> SourceIDs
 
+    // Slash Menu State
+    slashMenu: {
+        isOpen: boolean;
+        position: { x: number, y: number } | null;
+        targetNodeId: NodeId | null;
+    };
+    setSlashMenu: (state: { isOpen: boolean; position: { x: number, y: number } | null; targetNodeId: NodeId | null }) => void;
+
     // Actions
     addNode: (parentId: NodeId | null, index?: number) => void;
     deleteNode: (id: NodeId) => void;
     updateContent: (id: NodeId, content: string) => void;
+    updateType: (id: NodeId, type: string, attributes?: Record<string, any>) => void;
+    toggleComplete: (id: NodeId) => void;
     setFocus: (id: NodeId | null, cursorPos?: number | null) => void;
     navigateToNode: (id: NodeId) => void; // Added
     setFlashId: (id: NodeId | null) => void;

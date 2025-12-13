@@ -32,6 +32,17 @@ export const useOutlinerStore = create<OutlinerState>()(
                     flashId: null,
                     backlinks: {},
 
+                    // Slash Menu State
+                    slashMenu: {
+                        isOpen: false,
+                        position: null,
+                        targetNodeId: null
+                    },
+                    setSlashMenu: (payload) => set((prev) => ({
+                        ...prev,
+                        slashMenu: { ...prev.slashMenu, ...payload }
+                    })),
+
                     // Yjs State
                     doc: new Y.Doc(),
                     provider: undefined,

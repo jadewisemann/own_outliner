@@ -24,6 +24,8 @@ export interface NodeSlice {
     pasteNodes: (parentId: NodeId, index: number, nodes: any[]) => void;
     splitNode: (id: NodeId, cursorPosition: number) => void;
     mergeNode: (id: NodeId) => void;
+    updateType: (id: NodeId, type: string, attributes?: Record<string, any>) => void;
+    toggleComplete: (id: NodeId) => void;
 }
 
 const INITIAL_ROOT_ID = 'root';
@@ -63,6 +65,9 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
                     root.set('parentId', null);
                     root.set('children', new Y.Array());
                     root.set('isCollapsed', false);
+                    root.set('type', 'text');
+                    root.set('completed', false);
+                    root.set('meta', {});
                     root.set('updatedAt', Date.now());
                     yNodes.set(INITIAL_ROOT_ID, root);
                 } else {
@@ -83,6 +88,9 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
             newNodeMap.set('parentId', newNodeData.parentId);
             newNodeMap.set('children', new Y.Array()); // empty children
             newNodeMap.set('isCollapsed', newNodeData.isCollapsed);
+            newNodeMap.set('type', newNodeData.type);
+            newNodeMap.set('completed', newNodeData.completed);
+            newNodeMap.set('meta', newNodeData.meta || {});
             newNodeMap.set('updatedAt', Date.now());
 
             yNodes.set(newId, newNodeMap);
@@ -379,6 +387,9 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
                 nodeMap.set('content', data.content);
                 nodeMap.set('parentId', pId);
                 nodeMap.set('isCollapsed', false);
+                nodeMap.set('type', 'text');
+                nodeMap.set('completed', false);
+                nodeMap.set('meta', {});
                 nodeMap.set('updatedAt', Date.now());
 
                 const childrenArray = new Y.Array();
@@ -432,6 +443,9 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
             newNode.set('content', rightContent);
             newNode.set('children', new Y.Array());
             newNode.set('isCollapsed', false);
+            newNode.set('type', 'text'); // Splitting always creates text node by default
+            newNode.set('completed', false);
+            newNode.set('meta', {});
             newNode.set('updatedAt', Date.now());
 
             node.set('content', leftContent);
@@ -519,5 +533,39 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
         // const prevSiblingId = ... (re-logic). 
         // This is complex to do perfectly clean without repetition. 
         // Just rely on valid state.
+    },
+
+    updateType: (id, type, attributes) => {
+        const { doc } = get();
+        if (!doc) return;
+
+        doc.transact(() => {
+            const yNodes = doc.getMap('nodes');
+            const node = yNodes.get(id) as Y.Map<any>;
+            if (node) {
+                node.set('type', type);
+                if (attributes) {
+                    node.set('meta', attributes);
+                }
+                // Reset completed if switching away from todo? 
+                // Maybe keep it for history? Keep it.
+                node.set('updatedAt', Date.now());
+            }
+        });
+    },
+
+    toggleComplete: (id) => {
+        const { doc } = get();
+        if (!doc) return;
+
+        doc.transact(() => {
+            const yNodes = doc.getMap('nodes');
+            const node = yNodes.get(id) as Y.Map<any>;
+            if (node) {
+                const current = node.get('completed');
+                node.set('completed', !current);
+                node.set('updatedAt', Date.now());
+            }
+        });
     }
 });
