@@ -5,6 +5,8 @@ import { NodeItem } from './components/NodeItem';
 import { SettingsModal } from './components/SettingsModal';
 import { SearchModal } from './components/SearchModal';
 import { LoginModal } from './components/LoginModal';
+import { MainLayout } from './components/layout/MainLayout';
+import { SlashMenu } from '@/components/editor/SlashMenu';
 import { useVisibleNodes } from './hooks/useVisibleNodes';
 import { isMatch } from './utils/keybindings';
 
@@ -17,9 +19,17 @@ function App() {
   const setHoistedNode = useOutlinerStore((state) => state.setHoistedNode);
   const settings = useOutlinerStore((state) => state.settings);
   const focusedId = useOutlinerStore((state) => state.focusedId);
+  const indentNode = useOutlinerStore((state) => state.indentNode);
+  const outdentNode = useOutlinerStore((state) => state.outdentNode);
+
+  const slashMenu = useOutlinerStore((state) => state.slashMenu);
+  const setSlashMenu = useOutlinerStore((state) => state.setSlashMenu);
+  const updateType = useOutlinerStore((state) => state.updateType);
 
   const flatNodes = useVisibleNodes();
   const virtuosoRef = useRef<VirtuosoHandle>(null);
+  // ... existing code ...
+
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -41,7 +51,7 @@ function App() {
         });
       }
     }
-  }, [focusedId, flashId, flatNodes]); // Add flashId dependency
+  }, [focusedId, flashId, flatNodes]);
 
   // Global Keybindings
   useEffect(() => {
@@ -73,71 +83,87 @@ function App() {
     initializeSync(); // Starts Yjs provider
   }, [user, initializeSync]);
 
-  // TODO: Loading state
-  if (!rootNode) return <div className="p-10">Loading...</div>;
+  if (!rootNode) return <div className="p-10 text-slate-400">Loading...</div>;
 
   if (!user) {
-    return <LoginModal />; // Force login for now (or make it optional based on requirement)
+    return <LoginModal />;
   }
 
+  // Mobile Toolbar Handlers
+  const handleAddNode = () => {
+    // Add to bottom or focused? 
+    // Default to adding to root at end if no focus, or handled by addNode logic
+    addNode(activeRootId);
+  };
+
+  const handleIndent = () => {
+    if (focusedId) indentNode(focusedId);
+  };
+  const handleOutdent = () => {
+    if (focusedId) outdentNode(focusedId);
+  };
+
   return (
-    <div className="oo-app-container min-h-screen bg-white text-gray-900 p-10 max-w-4xl mx-auto">
-      <header className="oo-header mb-8 border-b pb-4 flex justify-between items-center">
-        <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-teal-400">
-          Own Outliner
-        </h1>
-        <div className="oo-toolbar flex gap-2">
-          <button
-            className="px-3 py-1.5 rounded text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors flex items-center gap-2"
-            onClick={() => setIsSearchOpen(true)}
-            title="Search (Cmd+P)"
-          >
-            🔍 Search
-          </button>
-          <button
-            className="px-3 py-1.5 rounded text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
-            onClick={() => setIsSettingsOpen(true)}
-          >
-            Settings ⚙️
-          </button>
+    <MainLayout
+      onAddNode={handleAddNode}
+      onIndent={handleIndent}
+      onOutdent={handleOutdent}
+    >
+      {/* Cover Image Placeholder */}
+      <div className="w-full h-48 rounded-xl bg-gradient-to-r from-blue-100 to-indigo-100 mb-8 opacity-50 group relative overflow-hidden">
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <button className="bg-white/90 shadow-sm px-3 py-1 rounded text-xs font-medium text-slate-600">Change Cover</button>
         </div>
-      </header>
+      </div>
 
-      <main className="oo-main pl-2">
-        {hoistedNodeId && (
-          <div className="mb-4 text-sm text-gray-500 flex items-center gap-1">
-            <span className="cursor-pointer hover:underline" onClick={() => setHoistedNode(null)}>Root</span>
-            <span>/</span>
-            <span className="font-medium text-gray-800">{rootNode.content || 'Untitled'}</span>
-          </div>
-        )}
+      {hoistedNodeId && (
+        <div className="mb-8 text-sm text-slate-400 flex items-center gap-1">
+          <span className="cursor-pointer hover:text-slate-600 hover:underline" onClick={() => setHoistedNode(null)}>Root</span>
+          <span>/</span>
+          <span className="font-medium text-slate-800">{rootNode.content || 'Untitled'}</span>
+        </div>
+      )}
 
-        {flatNodes.length === 0 ? (
-          <div
-            className="text-gray-400 italic cursor-pointer hover:bg-gray-50 p-2 rounded"
-            onClick={() => addNode(activeRootId)}
-          >
-            Click to start typing...
-          </div>
-        ) : (
-          <Virtuoso
-            ref={virtuosoRef}
-            useWindowScroll
-            data={flatNodes}
-            itemContent={(_, node) => (
-              <NodeItem key={node.id} id={node.id} level={node.level} />
-            )}
-          />
-        )}
-      </main>
+      {flatNodes.length === 0 ? (
+        <div
+          className="text-slate-400 italic cursor-pointer hover:bg-slate-50 p-2 rounded"
+          onClick={() => addNode(activeRootId)}
+        >
+          Click to start typing...
+        </div>
+      ) : (
+        <Virtuoso
+          ref={virtuosoRef}
+          useWindowScroll
+          data={flatNodes}
+          itemContent={(_, node) => (
+            <NodeItem key={node.id} id={node.id} level={node.level} />
+          )}
+        />
+      )}
 
-      <div className="fixed bottom-4 right-4 text-xs text-gray-400">
-        Local-First Outliner Prototype
+      <div
+        className="mt-8 text-slate-400 text-sm italic cursor-text hover:text-slate-600 opacity-0 hover:opacity-100 transition-opacity"
+        onClick={() => addNode(activeRootId)}
+      >
+        Click here to add a block...
       </div>
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-    </div>
+
+      {slashMenu.isOpen && slashMenu.position && (
+        <SlashMenu
+          position={slashMenu.position}
+          onClose={() => setSlashMenu({ isOpen: false, position: null, targetNodeId: null })}
+          onSelect={(type) => {
+            if (slashMenu.targetNodeId) {
+              updateType(slashMenu.targetNodeId, type);
+            }
+          }}
+        />
+      )}
+    </MainLayout>
   );
 }
 
