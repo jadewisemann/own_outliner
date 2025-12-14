@@ -197,6 +197,7 @@ function App() {
       title={localTitle}
       onTitleChange={handleTitleChange}
       onTitleKeyDown={handleTitleKeyDown}
+      onTitleFocus={() => setFocus(null)}
       headerInputRef={headerInputRef}
       breadcrumbs={breadcrumbs}
       onAddNode={handleAddNode}
