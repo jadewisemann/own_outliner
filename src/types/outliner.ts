@@ -87,7 +87,7 @@ export interface OutlinerState {
     moveDocument: (id: string, newParentId: string | null) => Promise<void>;
     cloneDocument: (id: string) => Promise<void>; // Added
     updateDocumentRank: (id: string, rank: string) => Promise<void>;
-    setActiveDocument: (id: string) => Promise<void>;
+    setActiveDocument: (id: string | null) => Promise<void>;
     fetchDocuments: () => Promise<void>;
 
     // Clipboard State
