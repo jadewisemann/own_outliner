@@ -156,7 +156,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
       e.preventDefault();
       if (focusedId) {
         if (e.ctrlKey || e.metaKey) {
-          setActiveDocument(focusedId);
+          await setActiveDocument(focusedId);
+          // Focus the editor (header) immediately after opening
+          document.dispatchEvent(new Event('outliner:focus-header'));
         } else {
           // Rename
           const item = documents.find(d => d.id === focusedId);
