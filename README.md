@@ -84,8 +84,8 @@ Dynalist와 Workflowy에서 영감을 받아, 마우스 없이 키보드만으�
 - [x] 최상단의 라인이 지워지면 커서가 포커스를 잃어버림
     - 포커스를 다음 노드로 이전시킬것
 - [x] 제목에 올라가면 다시 못내려옴 
+- [x] undo/redo
 - [ ] 인라인 포매팅 (md-like)
-- [ ] undo/redo
 - [ ] internal link
     - [[uuid || 문서이름]]
     - ((node's uuid))

@@ -120,8 +120,11 @@ export interface OutlinerState {
     splitNode: (id: NodeId, cursorPosition: number) => void;
     mergeNode: (id: NodeId) => void;
     // Yjs / CRDT properties
-    doc?: any; // typed as Y.Doc in implementation, but interface might need generic or loose type to avoid strict coupling in types file if Yjs not imported here. Better to import Y from yjs.
+    doc?: any; // typed as Y.Doc
     provider?: any;
+    undoManager?: any; // Y.UndoManager
+    undo: () => void;
+    redo: () => void;
     initializeSync: () => Promise<void>;
     // Auth
     user: any | null; // Placeholder, better if imported from AuthSlice

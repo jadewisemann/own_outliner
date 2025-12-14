@@ -76,8 +76,8 @@ export const useEditKeys = (
         if (executeIfMatch(e, keys.formatStrike, () => applyFormat(id, '~~'))) return;
 
         // Undo/Redo
-        if (executeIfMatch(e, keys.undo, () => (useOutlinerStore as any).temporal?.getState().undo())) return;
-        if (executeIfMatch(e, keys.redo, () => (useOutlinerStore as any).temporal?.getState().redo())) return;
+        if (executeIfMatch(e, keys.undo, () => state.undo())) return;
+        if (executeIfMatch(e, keys.redo, () => state.redo())) return;
     };
 
     return { handleEditMode };
