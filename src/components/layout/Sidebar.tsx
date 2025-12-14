@@ -3,8 +3,11 @@ import { useOutlinerStore } from '@/store/useOutlinerStore';
 import type { Document } from '@/types/outliner';
 import {
   Folder, FileText, ChevronRight, ChevronDown,
-  Plus, MoreHorizontal, Trash2, Edit2, FolderPlus, ArrowDownAZ
+  Plus, MoreHorizontal, Trash2, Edit2, FolderPlus,
+  ListFilter, Check
 } from 'lucide-react';
+
+import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, DropdownSeparator } from '@/components/ui/DropdownMenu';
 
 import { PromptModal } from '@/components/ui/PromptModal';
 
@@ -17,7 +20,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
   const {
     documents, fetchDocuments, createDocument,
     deleteDocument, renameDocument, setActiveDocument, activeDocumentId, moveDocument,
-    clipboardDocument, setClipboardDocument, cloneDocument
+    clipboardDocument, setClipboardDocument, cloneDocument, updateDocumentRank
   } = useOutlinerStore();
 
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
@@ -36,7 +39,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
   } | null>(null);
 
   // Sorting State
-  const [sortOrder, setSortOrder] = useState<'none' | 'name'>('none');
+  const [sortOrder, setSortOrder] = useState<'none' | 'name' | 'manual'>('none');
+  const [separateFolders, setSeparateFolders] = useState(true);
 
   // import { ArrowDownAZ, ... } from 'lucide-react'; // Need to update imports
 
@@ -91,11 +95,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
   const getSortedChildren = (parentId: string | null) => {
     const items = documents.filter(d => d.parentId === parentId);
     return items.sort((a, b) => {
-      if (a.isFolder !== b.isFolder) {
+      if (separateFolders && a.isFolder !== b.isFolder) {
         return a.isFolder ? -1 : 1;
       }
       if (sortOrder === 'name') {
         return a.title.localeCompare(b.title);
+      }
+      if (sortOrder === 'manual') {
+        // If ranks are present, sort by them. String comparison for LexoRank works.
+        // If rank missing, fall back to creation? Or treat as empty string (start or end).
+        const rA = a.rank || '';
+        const rB = b.rank || '';
+        if (rA && rB) return rA.localeCompare(rB, undefined, { numeric: true });
+        if (rA) return -1; // Ranked items first
+        if (rB) return 1;
+        // fallback
       }
       return 0; // Default creation order (DB)
     });
@@ -253,6 +267,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
   // DnD State
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [dropPos, setDropPos] = useState<'before' | 'inside' | 'after' | null>(null);
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
     e.stopPropagation();
@@ -266,54 +281,180 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
     e.stopPropagation();
     if (!draggedId || draggedId === id) return;
 
-    // Prevent dropping into self or children (simple check: if I am your parent... wait, need full tree check for cycle)
-    // For now, just simplistic check
-    if (isFolder) {
-      setDragOverId(id);
-      e.dataTransfer.dropEffect = 'move';
+    // Calculate drop position
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const height = rect.height;
+
+    // Zones
+    // If Folder: Top 25% -> Before, Middle 50% -> Inside, Bottom 25% -> After
+    // If File: Top 50% -> Before, Bottom 50% -> After
+
+    // Using manual sort?
+    if (sortOrder === 'manual') {
+      if (isFolder) {
+        if (y < height * 0.25) {
+          setDropPos('before');
+          setDragOverId(id);
+        } else if (y > height * 0.75) {
+          setDropPos('after');
+          setDragOverId(id);
+        } else {
+          setDropPos('inside');
+          setDragOverId(id);
+        }
+      } else {
+        // File
+        if (y < height * 0.5) {
+          setDropPos('before');
+          setDragOverId(id);
+        } else {
+          setDropPos('after');
+          setDragOverId(id);
+        }
+      }
+    } else {
+      // Not manual: Only support changing parents (nesting)
+      // So only "Inside" (for folders) is valid?
+      // Or if dropped on file, maybe nest into parent?
+      // Let's stick to old logic for non-manual:
+      /*
+      if (isFolder) {
+          setDragOverId(id);
+          setDropPos('inside');
+      }
+      */
+      // Actually, users expect to be able to move to folder even in 'name' sort.
+      if (isFolder) {
+        setDragOverId(id);
+        setDropPos('inside');
+      }
     }
+
+    e.dataTransfer.dropEffect = 'move';
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragOverId(null);
+    setDropPos(null);
   };
 
   const handleDrop = async (e: React.DragEvent, targetId: string | null) => {
     e.preventDefault();
     e.stopPropagation();
     setDragOverId(null);
+    setDropPos(null); // Clear indicator immediately
     if (!draggedId || draggedId === targetId) return;
 
     const draggedDoc = documents.find(d => d.id === draggedId);
     if (!draggedDoc) return;
 
-    // Check for conflict
-    const siblings = documents.filter(d => d.parentId === targetId && d.id !== draggedId);
-    let candidate = draggedDoc.title;
+    // Calculate drop position again to be sure
+    let currentDropPos: 'before' | 'inside' | 'after' | null = null;
 
-    // Only if collision exists with original name
-    if (siblings.some(s => s.title === candidate)) {
-      let counter = 1;
-      while (siblings.some(s => s.title === candidate)) {
-        candidate = `${draggedDoc.title} (${counter})`;
-        counter++;
+    if (targetId) {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      const height = rect.height;
+      const targetDoc = documents.find(d => d.id === targetId);
+
+      if (targetDoc) {
+        if (sortOrder === 'manual') {
+          if (targetDoc.isFolder) {
+            if (y < height * 0.25) currentDropPos = 'before';
+            else if (y > height * 0.75) currentDropPos = 'after';
+            else currentDropPos = 'inside';
+          } else {
+            if (y < height * 0.5) currentDropPos = 'before';
+            else currentDropPos = 'after';
+          }
+        } else {
+          if (targetDoc.isFolder) currentDropPos = 'inside';
+        }
       }
-
-      setConflictState({
-        isOpen: true,
-        draggedId: draggedId,
-        targetId: targetId,
-        initialName: candidate // Suggestion
-      });
-      setDraggedId(null);
-      return;
     }
 
-    console.log(`Moving ${draggedId} to ${targetId || 'root'} `);
-    await moveDocument(draggedId, targetId);
-    setDraggedId(null);
+    // Manual Sort Reordering
+    if (sortOrder === 'manual' && targetId && currentDropPos && currentDropPos !== 'inside') {
+      const targetDoc = documents.find(d => d.id === targetId);
+      if (targetDoc) {
+        console.log(`Reordering ${draggedId} ${currentDropPos} ${targetId}`);
+
+        // 1. Move to same parent as target
+        if (draggedDoc.parentId !== targetDoc.parentId) {
+          await moveDocument(draggedId, targetDoc.parentId);
+        }
+
+        // 2. Calculate Rank
+        const siblings = getSortedChildren(targetDoc.parentId).filter(d => d.id !== draggedId); // Exclude self if already there
+        const tIdx = siblings.findIndex(d => d.id === targetId);
+
+        let prevRankStr = '0';
+        let nextRankStr = '1000';
+
+        if (currentDropPos === 'before') {
+          // Insert Before Target
+          // Prev = siblings[tIdx-1], Next = Target
+          const prev = siblings[tIdx - 1];
+          if (prev?.rank) prevRankStr = prev.rank;
+          if (targetDoc.rank) nextRankStr = targetDoc.rank;
+        } else {
+          // Insert After Target
+          // Prev = Target, Next = siblings[tIdx+1]
+          if (targetDoc.rank) prevRankStr = targetDoc.rank;
+          const next = siblings[tIdx + 1];
+          if (next?.rank) nextRankStr = next.rank;
+          else {
+            // If no next rank, add 10 to prev
+            nextRankStr = (parseFloat(prevRankStr) + 10).toString();
+          }
+        }
+
+        const pVal = parseFloat(prevRankStr);
+        const nVal = parseFloat(nextRankStr);
+        const newRank = ((pVal + nVal) / 2).toFixed(4);
+
+        await updateDocumentRank(draggedId, newRank);
+        return;
+      }
+    }
+
+    // Default Nesting Logic (Inside Folder)
+    // Only if target is folder and we are dropping inside (or default mode)
+    if (targetId) {
+      const targetDoc = documents.find(d => d.id === targetId);
+      if (targetDoc && targetDoc.isFolder && (currentDropPos === 'inside' || !currentDropPos)) {
+        // Check for name conflict before moving
+        const siblings = documents.filter(d => d.parentId === targetId && d.id !== draggedId);
+        let candidate = draggedDoc.title;
+
+        if (siblings.some(s => s.title === candidate)) {
+          let counter = 1;
+          while (siblings.some(s => s.title === candidate)) {
+            candidate = `${draggedDoc.title} (${counter})`;
+            counter++;
+          }
+
+          setConflictState({
+            isOpen: true,
+            draggedId: draggedId,
+            targetId: targetId,
+            initialName: candidate
+          });
+          return;
+        }
+
+        console.log(`Moving ${draggedId} inside ${targetId}`);
+        await moveDocument(draggedId, targetId);
+        return;
+      }
+    } else {
+      // Drop on Root (Empty Space)
+      console.log(`Moving ${draggedId} to root`);
+      await moveDocument(draggedId, null);
+    }
   };
 
   const renderItem = (item: Document, depth: number = 0) => {
@@ -332,10 +473,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
           onDragOver={(e) => handleDragOver(e, item.id, item.isFolder)}
           onDragLeave={handleDragLeave}
           onDrop={(e) => handleDrop(e, item.id)}
-          className={`flex items-center group px-2 py-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer 
+          className={`flex items-center group px-2 py-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer relative
             ${isActive ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : ''}
             ${isFocused ? 'ring-1 ring-inset ring-blue-500 bg-blue-50 dark:bg-blue-900/10' : ''} 
-            ${isDragOver ? 'bg-blue-100 dark:bg-blue-800/40 outline outline-2 outline-blue-500 -outline-offset-2' : ''}
+            ${isDragOver && dropPos === 'inside' ? 'bg-blue-100 dark:bg-blue-800/40 outline outline-2 outline-blue-500 -outline-offset-2' : ''}
             ${isDragging ? 'opacity-50' : ''}
           `}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
@@ -411,6 +552,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
               <Edit2 size={14} />
             </button>
           )}
+
+          {/* Visual Drop Indicators */}
+          {isDragOver && dropPos === 'before' && (
+            <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 pointer-events-none" />
+          )}
+          {isDragOver && dropPos === 'after' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 pointer-events-none" />
+          )}
+
         </div>
 
         {item.isFolder && isExpanded && (
@@ -443,13 +593,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
       <div className="p-3 border-b border-neutral-200 dark:border-neutral-800 flex justify-between items-center">
         <span className="font-semibold text-sm text-neutral-600 dark:text-neutral-300">내 문서</span>
         <div className="flex gap-1">
-          <button
-            onClick={() => setSortOrder(prev => prev === 'none' ? 'name' : 'none')}
-            className={`p-1 rounded text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-700 ${sortOrder === 'name' ? 'bg-neutral-200 dark:bg-neutral-700 text-blue-500' : ''}`}
-            title={sortOrder === 'name' ? '정렬 해제' : '가나다순 정렬'}
-          >
-            <ArrowDownAZ size={16} />
-          </button>
+          <Dropdown>
+            <DropdownTrigger className="p-1 rounded text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-700">
+              <ListFilter size={16} />
+              <span className="text-xs ml-1">{sortOrder === 'name' ? '이름순' : sortOrder === 'manual' ? '사용자 지정' : '기본'}</span>
+            </DropdownTrigger>
+            <DropdownMenu>
+              <DropdownItem onClick={() => setSortOrder('none')} active={sortOrder === 'none'}>
+                기본 (생성순)
+              </DropdownItem>
+              <DropdownItem onClick={() => setSortOrder('name')} active={sortOrder === 'name'}>
+                이름순 (가나다)
+              </DropdownItem>
+              <DropdownItem onClick={() => setSortOrder('manual')} active={sortOrder === 'manual'}>
+                사용자 지정 (드래그)
+              </DropdownItem>
+              <DropdownSeparator />
+              <DropdownItem onClick={() => setSeparateFolders(prev => !prev)}>
+                <div className="flex items-center justify-between w-full">
+                  <span>폴더 우선 정렬</span>
+                  {separateFolders && <Check size={14} />}
+                </div>
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
           <div className="w-px h-4 bg-neutral-300 dark:bg-neutral-700 mx-1 self-center" />
           <button
             onClick={() => handleCreate(true)}

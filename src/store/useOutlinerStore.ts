@@ -141,6 +141,18 @@ export const useOutlinerStore = create<OutlinerState>()(
                     }
                 },
 
+
+
+                updateDocumentRank: async (id, rank) => {
+                    const state = get();
+                    // Optimistic update
+                    const docs = state.documents.map(d => d.id === id ? { ...d, rank } : d);
+                    set({ documents: docs });
+
+                    if (!state.user) return;
+                    await supabase.from('documents').update({ rank }).eq('id', id);
+                },
+
                 // Document Management Actions
                 fetchDocuments: async () => {
                     const state = get();
@@ -150,6 +162,8 @@ export const useOutlinerStore = create<OutlinerState>()(
                         .select('*')
                         .eq('owner_id', state.user.id)
                         .order('is_folder', { ascending: false })
+
+                        .order('rank', { ascending: true }) // Sort by rank by default (lexorank/float ascending)
                         .order('title');
 
                     if (error) {
@@ -165,7 +179,9 @@ export const useOutlinerStore = create<OutlinerState>()(
                         isFolder: d.is_folder,
                         // content: d.content, // heavy, don't load in list
                         createdAt: d.created_at,
-                        updatedAt: d.updated_at
+
+                        updatedAt: d.updated_at,
+                        rank: d.rank // Map rank
                     }));
 
                     set({ documents: docs });

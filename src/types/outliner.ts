@@ -64,6 +64,7 @@ export interface Document {
     content?: Uint8Array; // Yjs binary
     createdAt: string;
     updatedAt: string;
+    rank?: string; // For manual sorting (lexorank or simple float)
 }
 
 export interface OutlinerState {
@@ -85,6 +86,7 @@ export interface OutlinerState {
     renameDocument: (id: string, title: string) => Promise<void>;
     moveDocument: (id: string, newParentId: string | null) => Promise<void>;
     cloneDocument: (id: string) => Promise<void>; // Added
+    updateDocumentRank: (id: string, rank: string) => Promise<void>;
     setActiveDocument: (id: string) => Promise<void>;
     fetchDocuments: () => Promise<void>;
 
