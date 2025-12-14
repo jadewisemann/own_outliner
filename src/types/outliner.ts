@@ -92,8 +92,9 @@ export interface OutlinerState {
         isOpen: boolean;
         position: { x: number, y: number } | null;
         targetNodeId: NodeId | null;
+        filterText: string;
     };
-    setSlashMenu: (state: { isOpen: boolean; position: { x: number, y: number } | null; targetNodeId: NodeId | null }) => void;
+    setSlashMenu: (state: { isOpen: boolean; position: { x: number, y: number } | null; targetNodeId: NodeId | null; filterText?: string }) => void;
 
     // Actions
     addNode: (parentId: NodeId | null, index?: number) => void;
@@ -119,8 +120,11 @@ export interface OutlinerState {
     splitNode: (id: NodeId, cursorPosition: number) => void;
     mergeNode: (id: NodeId) => void;
     // Yjs / CRDT properties
-    doc?: any; // typed as Y.Doc in implementation, but interface might need generic or loose type to avoid strict coupling in types file if Yjs not imported here. Better to import Y from yjs.
+    doc?: any; // typed as Y.Doc
     provider?: any;
+    undoManager?: any; // Y.UndoManager
+    undo: () => void;
+    redo: () => void;
     initializeSync: () => Promise<void>;
     // Auth
     user: any | null; // Placeholder, better if imported from AuthSlice

@@ -10,9 +10,43 @@ interface NodeMarkdownProps {
 // Regex to capture ((UUID)) - supporting standard UUID format or simpler ids
 // Use negative lookbehind to avoid matching ((UUID)) if it is part of a markdown link like [label](((UUID)))
 // Note: Lookbehind support in JS regex is generally good in modern envs.
-const BLOCK_REF_REGEX = /(?<!\]\(|\]\(\()(\(\([a-zA-Z0-9-]+\)\))/g;
+// Regex to capture ((UUID)) and [[Title wiki-link]]
+// 1. ((UUID))
+// 2. [[Title]]
+const BLOCK_REF_REGEX = /(?<!\]\(|\]\(\()(\(\([a-zA-Z0-9-]+\)\))|(\[\[[^\]]+\]\])/g;
+
+import { useOutlinerStore } from '@/store/useOutlinerStore'; // Import store
+
+const resolveDocument = (linkText: string, documents: any[]) => {
+    // 1. Exact match first (optimization & fast path for simple links)
+    const exactMatch = documents.find(d => d.title === linkText);
+    if (exactMatch) return exactMatch;
+
+    // 2. Path resolution
+    const parts = linkText.split('/');
+    if (parts.length <= 1) return null; // Already checked exact match above
+
+    const targetTitle = parts.pop() || '';
+    const pathSegments = parts.reverse(); // Bottom-up validation
+
+    const candidates = documents.filter(d => d.title === targetTitle);
+
+    return candidates.find(doc => {
+        let current = doc;
+        for (const segment of pathSegments) {
+            if (!current.parentId) return false;
+            const parent = documents.find(d => d.id === current.parentId);
+            if (!parent || parent.title !== segment) return false;
+            current = parent;
+        }
+        return true;
+    });
+};
 
 export const NodeMarkdown: React.FC<NodeMarkdownProps> = ({ content }) => {
+    const documents = useOutlinerStore(state => state.documents);
+    const setActiveDocument = useOutlinerStore(state => state.setActiveDocument);
+
     if (!content || content.trim() === '') {
         return <span className="text-gray-300 italic">Empty node</span>;
     }
@@ -23,10 +57,39 @@ export const NodeMarkdown: React.FC<NodeMarkdownProps> = ({ content }) => {
     return (
         <span className="oo-node-markdown-wrapper">
             {parts.map((part, index) => {
-                if (BLOCK_REF_REGEX.test(part)) {
+                if (!part) return null; // Filter undefined from regex groups
+
+                if (part.startsWith('((') && part.endsWith('))')) {
                     // It's a naked block ref: ((id))
-                    const id = part.slice(2, -2); // Remove (( and ))
+                    const id = part.slice(2, -2);
                     return <NodeReference key={index} nodeId={id} />;
+                }
+
+                if (part.startsWith('[[') && part.endsWith(']]')) {
+                    // It's a wiki link: [[Title]] or [[Title|Alias]]
+                    const rawContent = part.slice(2, -2);
+                    const [linkTarget, linkAlias] = rawContent.split('|');
+                    const displayText = linkAlias || linkTarget;
+
+                    const targetDoc = resolveDocument(linkTarget, documents);
+
+                    if (targetDoc) {
+                        return (
+                            <span
+                                key={index}
+                                className="text-blue-600 hover:underline cursor-pointer font-medium"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveDocument(targetDoc.id);
+                                }}
+                            >
+                                {displayText}
+                            </span>
+                        );
+                    } else {
+                        // Broken link
+                        return <span key={index} className="text-red-400 opacity-60">[[{rawContent}]]</span>;
+                    }
                 }
 
                 // It's regular markdown content
@@ -38,27 +101,15 @@ export const NodeMarkdown: React.FC<NodeMarkdownProps> = ({ content }) => {
                         <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{
-                                p: ({ node, ...props }) => <p className="oo-markdown-p m-0 inline" {...props} />, // Render P as inline for flow
+                                p: ({ node, ...props }) => <p className="oo-markdown-p m-0 inline" {...props} />,
                                 a: ({ node, href, children, ...props }) => {
-                                    // Check if href is an internal link. 
-                                    // Supports:
-                                    // 1. ((UUID)) - Legacy/Current wrapper
-                                    // 2. UUID - New standard [Label](UUID)
-
-                                    // Simple check: is it a UUID?
-                                    // UUID regex: 8-4-4-4-12 hex digits.
-                                    // Also supporting our simple IDs if any? Current IDs seem to be UUIDs.
-                                    // Let's rely on exact match or ((wrapper)).
-
                                     if (!href) return <a {...props}>{children}</a>;
 
                                     let targetId: string | null = null;
 
                                     if (href.match(/^[a-zA-Z0-9-]+$/)) {
-                                        // Plain ID (UUID or short ID)
                                         targetId = href;
                                     } else if (href.startsWith('((') && href.endsWith('))')) {
-                                        // ((UUID))
                                         targetId = href.slice(2, -2);
                                     }
 
@@ -71,7 +122,6 @@ export const NodeMarkdown: React.FC<NodeMarkdownProps> = ({ content }) => {
                                 h1: ({ node, ...props }) => <h1 className="oo-markdown-h1 text-xl font-bold mt-2 mb-1 text-gray-900 inline-block" {...props} />,
                                 h2: ({ node, ...props }) => <h2 className="oo-markdown-h2 text-lg font-bold mt-2 mb-1 text-gray-800 inline-block" {...props} />,
                                 h3: ({ node, ...props }) => <h3 className="oo-markdown-h3 text-base font-bold mt-1 mb-1 text-gray-800 inline-block" {...props} />,
-                                // Keep block elements mostly inline-block for partial flow or just let them break
                                 blockquote: ({ node, ...props }) => <blockquote className="oo-markdown-blockquote border-l-4 border-gray-300 pl-2 text-gray-500 italic my-1 inline-block" {...props} />,
                                 code: ({ node, ...props }) => <code className="oo-markdown-code bg-gray-100 px-1 rounded text-sm font-mono text-red-500" {...props} />,
                                 strong: ({ node, ...props }) => <strong className="oo-markdown-bold font-bold" {...props} />,

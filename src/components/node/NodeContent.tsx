@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import { useState, useRef } from 'react'; // Added useState
 import type { NodeId } from '@/types/outliner';
 import { useNodeLogic } from '@/hooks/node/useNodeLogic';
 import { useNodeFocusProcessing } from '@/hooks/node/useNodeFocusProcessing';
@@ -7,6 +7,8 @@ import { useNodeKeys } from '@/hooks/node/useNodeKeys';
 // Components
 import { Check, Terminal } from 'lucide-react';
 import { NodeBacklinksIndicator } from './NodeBacklinksIndicator';
+import { NodeMarkdown } from './NodeMarkdown';
+import { InlineSearchPopup } from '@/components/InlineSearchPopup'; // Imported
 
 // We'll use a simplified ContentInput for now, but configured with types
 interface NodeContentProps {
@@ -22,10 +24,26 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id }) => {
         setFocus,
         deselectAll,
         updateContent,
+        updateType,
         toggleComplete,
         setSlashMenu,
 
     } = useNodeLogic(id);
+
+    // Popup State
+    const [linkPopup, setLinkPopup] = useState<{
+        isOpen: boolean;
+        type: 'node' | 'document';
+        position: { top: number; left: number };
+        query: string;
+        triggerIndex: number;
+    }>({
+        isOpen: false,
+        type: 'node',
+        position: { top: 0, left: 0 },
+        query: '',
+        triggerIndex: -1
+    });
 
     const inputRef = useRef<HTMLInputElement>(null);
     const containerRef = useRef<HTMLDivElement>(null); // For future use if we make the container focusable
@@ -116,28 +134,158 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id }) => {
                 <div className="absolute left-0 top-2 -ml-2 w-1 h-full bg-slate-300 rounded-full" />
             )}
 
-            <input
-                ref={inputRef}
-                type="text"
-                value={node.content || ''}
-                onChange={(e) => {
-                    const val = e.target.value;
-                    updateContent(id, val);
-                    if (val === '/') {
-                        const rect = e.target.getBoundingClientRect();
-                        setSlashMenu({
-                            isOpen: true,
-                            position: { x: rect.left, y: rect.bottom },
-                            targetNodeId: id
+            {/* Content Area: Hybrid Mode */}
+            {isFocused ? (
+                <input
+                    ref={inputRef}
+                    type="text"
+                    value={node.content || ''}
+                    onChange={(e) => {
+                        const val = e.target.value;
+
+                        // Auto-Heading Conversion Logic
+                        // # Space -> H1, ## Space -> H2, ### Space -> H3
+                        if (val === '# ' && node.type !== 'h1') {
+                            updateType(id, 'h1');
+                            updateContent(id, ''); // Remove the #
+                            return; // Stop processing
+                        }
+                        if (val === '## ' && node.type !== 'h2') {
+                            updateType(id, 'h2');
+                            updateContent(id, '');
+                            return;
+                        }
+                        if (val === '### ' && node.type !== 'h3') {
+                            updateType(id, 'h3');
+                            updateContent(id, '');
+                            return;
+                        }
+
+                        updateContent(id, val);
+
+
+
+                        // 1. Slash Menu Trigger
+                        if (val.startsWith('/')) {
+                            const filterText = val.slice(1);
+                            const rect = e.target.getBoundingClientRect();
+                            setSlashMenu({
+                                isOpen: true,
+                                position: { x: rect.left, y: rect.bottom },
+                                targetNodeId: id,
+                                filterText
+                            });
+                        } else {
+                            setSlashMenu({ isOpen: false, position: null, targetNodeId: null });
+                        }
+
+                        // 2. Internal Link Trigger ([[ or (())
+                        // Match last occurrence of [[ or ((
+                        // Regex: /\[\[([^\]]*)$/ or /\(\(([^\)]*)$/
+                        // Actually easier to match generic trigger chars
+                        const selectionStart = e.target.selectionStart || 0;
+                        const textBeforeCursor = val.slice(0, selectionStart);
+
+                        // Check for [[
+                        const docMatch = textBeforeCursor.match(/\[\[([^\]]*)$/);
+                        if (docMatch) {
+                            const query = docMatch[1];
+                            const rect = e.target.getBoundingClientRect();
+                            // Approximate left pos: rect.left + measureText(beforeMatch)?
+                            // For MVP, stick to rect.left + offset or similar. 
+                            // Better: rect.left + (docMatch.index * ch_width)
+                            const chWidth = 7.5; // Approx for default font
+                            const leftOffset = (docMatch.index || 0) * chWidth;
+
+                            setLinkPopup({
+                                isOpen: true,
+                                type: 'document',
+                                position: { top: rect.bottom, left: rect.left + leftOffset },
+                                query,
+                                triggerIndex: docMatch.index!
+                            });
+                            return;
+                        }
+
+                        // Check for ((
+                        const nodeMatch = textBeforeCursor.match(/\(\(([^\)]*)$/);
+                        if (nodeMatch) {
+                            const query = nodeMatch[1];
+                            const rect = e.target.getBoundingClientRect();
+                            const chWidth = 7.5;
+                            const leftOffset = (nodeMatch.index || 0) * chWidth;
+
+                            setLinkPopup({
+                                isOpen: true,
+                                type: 'node',
+                                position: { top: rect.bottom, left: rect.left + leftOffset },
+                                query,
+                                triggerIndex: nodeMatch.index!
+                            });
+                            return;
+                        }
+
+                        // If no match, close popup
+                        if (linkPopup.isOpen) {
+                            setLinkPopup(prev => ({ ...prev, isOpen: false }));
+                        }
+                    }}
+                    onKeyDown={handleKeyDown}
+                    onPaste={handlePaste}
+                    placeholder={node.type === 'text' ? "Type '/' for commands" : "Heading"}
+                    className={`w-full bg-transparent outline-none transition-all ${getStyles()}`}
+                    autoComplete="off"
+                    autoFocus // Ensure focus when switched
+                />
+            ) : (
+                <div
+                    className={`w-full min-h-[1.5rem] cursor-text ${getStyles()}`}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setFocus(id);
+                    }}
+                >
+                    <NodeMarkdown content={node.content} />
+                </div>
+            )}
+
+            {/* Internal Link Popup */}
+            {linkPopup.isOpen && (
+                <InlineSearchPopup
+                    mode={linkPopup.type}
+                    query={linkPopup.query}
+                    position={linkPopup.position}
+                    onSelect={(selectedId, selectedContent) => {
+                        const value = node.content;
+                        const triggerIdx = linkPopup.triggerIndex;
+                        const before = value.substring(0, triggerIdx);
+
+                        const queryLen = linkPopup.query.length;
+                        const after = value.substring(triggerIdx + 2 + queryLen);
+
+                        let insertion = '';
+                        if (linkPopup.type === 'document') {
+                            insertion = `[[${selectedContent}]]`;
+                        } else {
+                            insertion = `((${selectedId}))`;
+                        }
+
+                        const newValue = before + insertion + after;
+                        updateContent(id, newValue);
+
+                        setLinkPopup({ isOpen: false, type: 'node', position: { top: 0, left: 0 }, query: '', triggerIndex: -1 });
+
+                        requestAnimationFrame(() => {
+                            if (inputRef.current) {
+                                inputRef.current.focus();
+                                // const newCursor = before.length + insertion.length; 
+                                // inputRef.current.setSelectionRange(newCursor, newCursor);
+                            }
                         });
-                    }
-                }}
-                onKeyDown={handleKeyDown}
-                onPaste={handlePaste}
-                placeholder={node.type === 'text' ? "Type '/' for commands" : "Heading"}
-                className={`w-full bg-transparent outline-none transition-all ${getStyles()}`}
-                autoComplete="off"
-            />
+                    }}
+                    onClose={() => setLinkPopup({ isOpen: false, type: 'node', position: { top: 0, left: 0 }, query: '', triggerIndex: -1 })}
+                />
+            )}
 
             {/* Indicators */}
             <NodeBacklinksIndicator id={id} />

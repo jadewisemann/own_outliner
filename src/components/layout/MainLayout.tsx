@@ -16,6 +16,7 @@ interface MainLayoutProps {
   onOutdent?: () => void;
   onSearch?: () => void;
   onSettings?: () => void;
+  onTitleFocus?: () => void;
 }
 
 export const MainLayout: React.FC<MainLayoutProps> = ({
@@ -29,7 +30,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   onIndent = () => { },
   onOutdent = () => { },
   onSearch,
-  onSettings
+  onSettings,
+  onTitleFocus
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -111,6 +113,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               type="text"
               value={title}
               onChange={(e) => onTitleChange(e.target.value)}
+              onFocus={onTitleFocus}
               onKeyDown={onTitleKeyDown}
               className="w-full bg-transparent text-4xl font-bold text-slate-900 placeholder-slate-300 outline-none"
               placeholder="Untitled"

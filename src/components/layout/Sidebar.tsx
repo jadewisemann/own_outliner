@@ -6,6 +6,8 @@ import {
   Plus, MoreHorizontal, Trash2, Edit2, FolderPlus, ArrowDownAZ
 } from 'lucide-react';
 
+import { PromptModal } from '@/components/ui/PromptModal';
+
 interface SidebarProps {
   className?: string;
   onClose?: () => void;
@@ -14,13 +16,21 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
   const {
     documents, fetchDocuments, createDocument,
-    deleteDocument, renameDocument, setActiveDocument, activeDocumentId
+    deleteDocument, renameDocument, setActiveDocument, activeDocumentId, moveDocument
   } = useOutlinerStore();
 
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
   const [contextMenu, setContextMenu] = useState<{ id: string, x: number, y: number } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+
+  // Conflict Modal State
+  const [conflictState, setConflictState] = useState<{
+    isOpen: boolean;
+    draggedId: string;
+    targetId: string | null;
+    initialName: string;
+  } | null>(null);
 
   // Sorting State
   const [sortOrder, setSortOrder] = useState<'none' | 'name'>('none');
@@ -73,8 +83,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
-  const { moveDocument } = useOutlinerStore();
-
   const handleDragStart = (e: React.DragEvent, id: string) => {
     e.stopPropagation();
     setDraggedId(id);
@@ -106,6 +114,31 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
     e.stopPropagation();
     setDragOverId(null);
     if (!draggedId || draggedId === targetId) return;
+
+    const draggedDoc = documents.find(d => d.id === draggedId);
+    if (!draggedDoc) return;
+
+    // Check for conflict
+    const siblings = documents.filter(d => d.parentId === targetId && d.id !== draggedId);
+    let candidate = draggedDoc.title;
+
+    // Only if collision exists with original name
+    if (siblings.some(s => s.title === candidate)) {
+      let counter = 1;
+      while (siblings.some(s => s.title === candidate)) {
+        candidate = `${draggedDoc.title} (${counter})`;
+        counter++;
+      }
+
+      setConflictState({
+        isOpen: true,
+        draggedId: draggedId,
+        targetId: targetId,
+        initialName: candidate // Suggestion
+      });
+      setDraggedId(null);
+      return;
+    }
 
     console.log(`Moving ${draggedId} to ${targetId || 'root'}`);
     await moveDocument(draggedId, targetId);
@@ -172,7 +205,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
           )}
 
           <button
-            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded"
+            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded mr-1"
+            title={item.isFolder ? "폴더 문서 열기" : "설정"}
             onClick={(e) => {
               e.stopPropagation();
               setContextMenu({ id: item.id, x: e.clientX, y: e.clientY });
@@ -180,6 +214,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
           >
             <MoreHorizontal size={14} />
           </button>
+
+          {item.isFolder && (
+            <button
+              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded"
+              title="폴더 문서 편집"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveDocument(item.id);
+              }}
+            >
+              <Edit2 size={14} />
+            </button>
+          )}
         </div>
 
         {item.isFolder && isExpanded && (
@@ -234,14 +281,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
           // Allow dropping on empty space to move to root
           e.dataTransfer.dropEffect = 'move';
         }}
-        onDrop={(e) => {
-          e.preventDefault();
-          // If dropped on root container (not handled by item stopPropagation), move to root
-          if (draggedId) {
-            moveDocument(draggedId, null);
-            setDraggedId(null);
-          }
-        }}
+        onDrop={(e) => handleDrop(e, null)}
       >
         {buildTree(null).map(item => renderItem(item))}
       </div>
@@ -303,6 +343,38 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
             </button>
           </div>
         </>
+      )}
+
+      {/* Conflict Resolution Modal */}
+      {conflictState && (
+        <PromptModal
+          isOpen={true}
+          title="이름 충돌"
+          message={`대상 폴더에 같은 이름이 존재합니다.\n'${conflictState.initialName}'(으)로 변경하여 이동하시겠습니까?`}
+          initialValue={conflictState.initialName}
+          onConfirm={async (newName) => {
+            const trimmed = newName.trim();
+            const doc = documents.find(d => d.id === conflictState.draggedId);
+
+            if (!doc) {
+              setConflictState(null);
+              return;
+            }
+
+            if (trimmed && trimmed !== doc.title) {
+              await renameDocument(conflictState.draggedId, trimmed);
+              await moveDocument(conflictState.draggedId, conflictState.targetId);
+              setConflictState(null); // Close on success
+            } else {
+              // If matches original title, conflict persists
+              if (trimmed === doc.title) {
+                alert("이미 존재하는 이름입니다. 이동할 수 없습니다.");
+                // Modal remains open
+              }
+            }
+          }}
+          onCancel={() => setConflictState(null)}
+        />
       )}
     </div>
   );

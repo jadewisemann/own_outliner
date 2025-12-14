@@ -188,11 +188,35 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
                     }
                 } else {
                     // 2. Parent (if no previous sibling)
-                    if (parentId !== 'root') {
+                    // Check if we are at the visual root (Actual Root OR Hoisted Node)
+                    const { hoistedNodeId } = get();
+                    const isVisualRoot = parentId === 'root' || parentId === hoistedNodeId;
+
+                    if (!isVisualRoot) {
                         nextFocusId = parentId;
                         const pNode = yNodes.get(parentId) as Y.Map<any>;
                         const content = (pNode?.get('content') as string) || '';
                         nextCursorPos = content.length;
+                    } else {
+                        // We are at the top of the list (Root or Zoomed).
+                        // Standard behavior would focus parent, but here parent is "invisible" or "header".
+                        // Logic: Focus the NEXT sibling (new top node) if it exists.
+                        if (index < arr.length - 1) {
+                            nextFocusId = arr[index + 1];
+                            nextCursorPos = 0;
+                        }
+                        // If no next sibling (list becomes empty), we intentionally find no focus 
+                        // or let the UI handle empty state.
+                        // For hoisted view, maybe focus the hoisted node (header)? 
+                        // Users usually expect focus to stay in the list editing area if possible,
+                        // but if empty, focusing the header (hoisted node) is a safe fallback.
+                        else if (parentId === hoistedNodeId) {
+                             nextFocusId = hoistedNodeId;
+                             // Focus at end of header content?
+                             const hNode = yNodes.get(hoistedNodeId) as Y.Map<any>;
+                             const hContent = (hNode?.get('content') as string) || '';
+                             nextCursorPos = hContent.length;
+                        }
                     }
                 }
 

@@ -67,6 +67,7 @@ export const NodeInput = forwardRef<HTMLInputElement, NodeInputProps>(
                 />
                 {showPopup && (
                     <InlineSearchPopup
+                        mode="document"
                         query={popupQuery}
                         position={popupPos}
                         onSelect={(selectedId, selectedContent) => {
