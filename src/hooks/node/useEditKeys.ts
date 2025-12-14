@@ -25,7 +25,13 @@ export const useEditKeys = (
         if (executeIfMatch(e, keys.splitNode, () => {
             if (inputRef.current) {
                 const cursorPos = inputRef.current.selectionStart || 0;
-                state.splitNode(id, cursorPos);
+                const selectionEnd = inputRef.current.selectionEnd || 0;
+
+                if (cursorPos === 0 && selectionEnd === 0) {
+                    state.addNodeBefore(id);
+                } else {
+                    state.splitNode(id, cursorPos);
+                }
             }
         })) return;
 

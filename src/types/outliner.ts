@@ -97,6 +97,7 @@ export interface OutlinerState {
 
     // Actions
     addNode: (parentId: NodeId | null, index?: number) => void;
+    addNodeBefore: (siblingId: NodeId) => void;
     deleteNode: (id: NodeId) => void;
     updateContent: (id: NodeId, content: string) => void;
     updateType: (id: NodeId, type: string, attributes?: Record<string, any>) => void;

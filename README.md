@@ -74,37 +74,28 @@ Dynalist와 Workflowy에서 영감을 받아, 마우스 없이 키보드만으�
 - [x] 가상화 (Virtualization): react-virtuoso를 도입하여 대용량 노드 렌더링 성능 최적화.
 - [ ] OPML 내보내기/가져오기: 백업 및 다른 아웃라이너와의 호환성.
 
+### Phase 4: 확장성 (Scalability)
+- [x] 가상화 (Virtualization): react-virtuoso를 도입하여 대용량 노드 렌더링 성능 최적화.
+- [ ] OPML 내보내기/가져오기: 백업 및 다른 아웃라이너와의 호환성.
+
 ### FIX
-- [ ] enter 수정
-    - 맨앞에서 엔터치면 위에 새로운 노드 삽입
-- [ ] slash
+- [x] break line login
+    - node의 맨앞에서는 현재 노드의 위에 생겨야 함
+- [ ] 슬래쉬 (/)가 생겼을 때 포커스 깨짐
 - [ ] undo/redo
+- [ ] internal li
 
-### TODO: 
-- [ ] logical 인덴트
-    - 설정으로 고를 수 있게
-- [ ] enter 기능 변경
-- [ ] 브래드크럼블
-    - 브래드 크럼블 링크
-
-- [ ] local 파일 구조
-    - md 형태로 커버가 되나?
-    - 안되면 어쩌나?
-
-- [ ] 메모 기능 추가
-- [ ] 긴글 추가
-- [ ] code block 추가
-    - [ ] inline code block
-    - ? code formatting을 제공할 수 있나
-
-- [ ] latex || typst 수식 포매팅
-    - 둘 다 지원 가능?
-    - default formatter를 세팅에서 설정 가능
-
-- [ ] quote 추가
-
-- [ ] 문서랑 폴더 구조로 변경
-
+### TODO
+- [ ] logical indentation
+- [ ] 노드 이동 알고리즘 수정
+- [ ] 브래드 크럼블
+- [ ] 메모 추가
+- [ ] 파일 구조 고민 (later)
+    - [ ] 메모 추가하거나 하면 일반적인 md로는 커버가 안됨
+    - [ ] 이것도 문서 링크로 처리를 해야 할까?
+        - [ ] 문서 링크이되 바로 보이는 구조?
+- [ ] 도큐먼트 확장 추가
+    - [ ] 모든 도큐먼트가 저장되는 폴더 존재
 - [ ] inline link 추가
     - [ ] inline document 링크
     - [ ] inline node 링크

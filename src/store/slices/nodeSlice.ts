@@ -26,6 +26,7 @@ export interface NodeSlice {
     mergeNode: (id: NodeId) => void;
     updateType: (id: NodeId, type: string, attributes?: Record<string, any>) => void;
     toggleComplete: (id: NodeId) => void;
+    addNodeBefore: (siblingId: NodeId) => void;
 }
 
 const INITIAL_ROOT_ID = 'root';
@@ -49,6 +50,8 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
     addNode: (parentId, index) => {
         const { doc, rootNodeId } = get();
         if (!doc) return;
+
+        const newId = generateId(); // Moved outside transact to capture for focus setting
 
         doc.transact(() => {
             const yNodes = doc.getMap('nodes');
@@ -77,7 +80,6 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
             // Re-get potentially created parent
             const safeParent = yNodes.get(targetParentId) as Y.Map<any>;
 
-            const newId = generateId();
             const newNodeData = createInitialNode(newId);
             newNodeData.parentId = targetParentId;
 
@@ -107,36 +109,36 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
         });
 
         // Optimistic / Focus update
-        // We rely on observer for 'nodes' update, but focus needs to be set manually
-        // We know the ID we just added.
-        // Wait, 'generateId' is deterministic/local.
-        // We can set focus immediately.
-        // BUT, get().nodes won't have it yet until observer fires? 
-        // Observer fires synchronously usually for local changes? 
-        // Yes, Yjs usually fires sync.
-
-        // However, let's grab the ID we generated.
-        // We need to set focusedId.
-        // The observer in useOutlinerStore uses `set({ nodes })`.
-        // We can just set focus here.
-        // We need the ID.
-        // ID is not returned from addNode.
-        // We should predict the ID or change addNode to return it? 
-        // 'addNode' signature is void.
-        // But we computed 'newId'.
-
-        // Hack: We can't easily see 'newId' outside the transaction scope here unless we capture it.
-        // Re-implementing logic:
-        // Ops, I am inside addNode function scope. 'newId' is available.
-        // So I can set focus.
-
-        // Wait, generateId was called inside? No, before transact maybe?
-        // Code above: const newId = generateId(); BEFORE transact.
-        // No, I put it inside. I should move it out or capture it.
+        set({ focusedId: newId, focusCursorPos: 0 });
     },
 
     // I need to implement each action carefully. 
     // Since 'write_to_file' replaces the whole file, I will implement ALL actions properly now.
+
+    addNodeBefore: (siblingId) => {
+        const { doc, addNode } = get();
+        if (!doc) return;
+
+        const yNodes = doc.getMap('nodes');
+        const node = yNodes.get(siblingId) as Y.Map<any>;
+        if (!node) return;
+
+        const parentId = node.get('parentId');
+        const parent = yNodes.get(parentId) as Y.Map<any>;
+        if (!parent) return;
+
+        const children = parent.get('children') as Y.Array<string>;
+        const arr = children.toArray();
+        const index = arr.indexOf(siblingId);
+
+        if (index !== -1) {
+            addNode(parentId, index); // Insert at current index -> New Node appears BEFORE sibling.
+            // addNode sets focus to new node.
+            // We want to restore focus to siblingId.
+            // Since everything is synchronous (Yjs + Zustand set), we can just set it back immediately.
+            set({ focusedId: siblingId });
+        }
+    },
 
     deleteNode: (id) => {
         const { doc } = get();
