@@ -1,5 +1,5 @@
 
-import { useOutlinerStore } from '@/store/useOutlinerStore';
+import { useOutlinerStore } from '@/store/outliner';
 import type { NodeId } from '@/types/outliner';
 import { useCallback } from 'react';
 

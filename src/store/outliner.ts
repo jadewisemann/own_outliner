@@ -332,7 +332,7 @@ export const useOutlinerStore = create<OutlinerState>()(
                     await get().fetchDocuments();
                 },
 
-                setActiveDocument: async (id) => {
+                setActiveDocument: async (id: string | null) => {
                     const state = get();
                     if (state.activeDocumentId === id && state.provider) return; // Already active and connected
                     if (!state.user) return;
@@ -343,6 +343,11 @@ export const useOutlinerStore = create<OutlinerState>()(
                     }
                     if (state.undoManager) {
                         state.undoManager.destroy(); // Cleanup old manager
+                    }
+
+                    if (!id) {
+                        set({ activeDocumentId: null, provider: null, undoManager: null });
+                        return;
                     }
 
                     // Create fresh doc
@@ -541,13 +546,4 @@ export const useOutlinerStore = create<OutlinerState>()(
     )
 );
 
-// Auto-Sync Handling using subscription
-// We can Disable the old "Push" logic since Yjs Provider handles sync!
-/*
-let syncTimeout: ReturnType<typeof setTimeout> | null = null;
-const DEBOUNCE_MS = 3000;
 
-useOutlinerStore.subscribe((state, prevState) => {
-    // ... disable old push ...
-});
-*/
