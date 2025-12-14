@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useOutlinerStore } from '@/store/useOutlinerStore';
-import type { Document } from '@/types/outliner';
+import { useOutlinerStore } from '@/store/outliner';
+import type { Document, ConflictState } from '@/types/outliner';
 import { useSidebarSort } from '@/hooks/useSidebarSort';
-import { useSidebarDnD } from '@/hooks/useSidebarDnD';
+import { useSidebarDragAndDrop } from '@/hooks/useSidebarDragAndDrop';
 
 interface SidebarContextType {
     // Data
@@ -38,13 +38,9 @@ interface SidebarContextType {
     setContextMenu: (menu: { id: string, x: number, y: number } | null) => void;
 
     // Conflict state
-    conflictState: {
-        isOpen: boolean;
-        draggedId: string;
-        targetId: string | null;
-        initialName: string;
-    } | null;
-    setConflictState: (state: any) => void;
+    conflictState: ConflictState | null;
+    setConflictState: (state: ConflictState | null) => void;
+
 
     // DnD
     draggedId: string | null;
@@ -65,34 +61,37 @@ interface SidebarContextType {
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
+import { useSidebarSelection } from '@/hooks/useSidebarSelection';
+import { useSidebarFolder } from '@/hooks/useSidebarFolder';
+import { useSidebarEditing } from '@/hooks/useSidebarEditing';
+
 export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const {
-        documents, fetchDocuments, createDocument,
-        deleteDocument, renameDocument, setActiveDocument, activeDocumentId, moveDocument,
-        updateDocumentRank
-    } = useOutlinerStore();
+    const { documents, fetchDocuments, moveDocument, updateDocumentRank } = useOutlinerStore();
 
+    // 1. Domain Hooks
     const { sortOrder, setSortOrder, separateFolders, setSeparateFolders, getSortedChildren } = useSidebarSort(documents);
-    const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
+    const { expandedFolders, toggleFolder, setExpandedFolders, expandFolder } = useSidebarFolder();
+    const { activeDocumentId, setActiveDocument, focusedId, setFocusedId } = useSidebarSelection();
+
+    // Pass expandFolder as callback to handleCreate so new items in folders are visible
+    const {
+        editingId, setEditingId, editName, setEditName, handleRename,
+        handleCreate: baseHandleCreate, deleteDocument, sidebarRef
+    } = useSidebarEditing();
+
+    const handleCreateWrapper = useCallback(async (isFolder: boolean, parentId: string | null = null) => {
+        await baseHandleCreate(isFolder, parentId, (pid) => {
+            if (pid) expandFolder(pid);
+        });
+    }, [baseHandleCreate, expandFolder]);
+
     const [contextMenu, setContextMenu] = useState<{ id: string, x: number, y: number } | null>(null);
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [editName, setEditName] = useState('');
-    const [focusedId, setFocusedId] = useState<string | null>(null);
-
-    // Conflict Modal State
-    const [conflictState, setConflictState] = useState<{
-        isOpen: boolean;
-        draggedId: string;
-        targetId: string | null;
-        initialName: string;
-    } | null>(null);
-
-    const sidebarRef = React.useRef<HTMLDivElement>(null);
+    const [conflictState, setConflictState] = useState<ConflictState | null>(null);
 
     const {
         draggedId, dragOverId, dropPos,
         handleDragStart, handleDragOver, handleDragLeave, handleDrop
-    } = useSidebarDnD({
+    } = useSidebarDragAndDrop({
         documents,
         sortOrder,
         getSortedChildren,
@@ -105,27 +104,7 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
         fetchDocuments();
     }, []);
 
-    const toggleFolder = useCallback((id: string) => {
-        setExpandedFolders(prev => ({ ...prev, [id]: !prev[id] }));
-    }, []);
-
-    const handleCreate = useCallback(async (isFolder: boolean, parentId: string | null = null) => {
-        await createDocument(isFolder ? '새 폴더' : '새 문서', parentId, isFolder);
-        if (parentId) {
-            setExpandedFolders(prev => ({ ...prev, [parentId]: true }));
-        }
-    }, [createDocument]);
-
-    const handleRename = useCallback(async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (editingId && editName.trim()) {
-            await renameDocument(editingId, editName);
-            setEditingId(null);
-            sidebarRef.current?.focus();
-        }
-    }, [editingId, editName, renameDocument]);
-
-    const value = {
+    const value = React.useMemo(() => ({
         documents,
         sortOrder, setSortOrder, separateFolders, setSeparateFolders, getSortedChildren,
         expandedFolders, toggleFolder, setExpandedFolders,
@@ -136,9 +115,21 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ child
         conflictState, setConflictState,
         draggedId, dragOverId, dropPos,
         handleDragStart, handleDragOver, handleDragLeave, handleDrop,
-        handleCreate, deleteDocument,
+        handleCreate: handleCreateWrapper, deleteDocument,
         sidebarRef
-    };
+    }), [
+        documents,
+        sortOrder, setSortOrder, separateFolders, setSeparateFolders, getSortedChildren,
+        expandedFolders, toggleFolder, setExpandedFolders,
+        activeDocumentId, setActiveDocument,
+        focusedId, setFocusedId,
+        editingId, setEditingId, editName, setEditName, handleRename,
+        contextMenu,
+        conflictState,
+        draggedId, dragOverId, dropPos,
+        handleDragStart, handleDragOver, handleDragLeave, handleDrop,
+        handleCreateWrapper, deleteDocument
+    ]);
 
     return (
         <SidebarContext.Provider value={value}>
