@@ -84,8 +84,13 @@ export interface OutlinerState {
     deleteDocument: (id: string) => Promise<void>;
     renameDocument: (id: string, title: string) => Promise<void>;
     moveDocument: (id: string, newParentId: string | null) => Promise<void>;
+    cloneDocument: (id: string) => Promise<void>; // Added
     setActiveDocument: (id: string) => Promise<void>;
     fetchDocuments: () => Promise<void>;
+
+    // Clipboard State
+    clipboardDocument: { id: string; op: 'cut' | 'copy' } | null;
+    setClipboardDocument: (clipboard: { id: string; op: 'cut' | 'copy' } | null) => void;
 
     // Slash Menu State
     slashMenu: {

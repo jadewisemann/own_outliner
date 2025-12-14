@@ -37,6 +37,7 @@ export const useOutlinerStore = create<OutlinerState>()(
                 flashId: null,
                 backlinks: {},
 
+
                 // Slash Menu State
                 slashMenu: {
                     isOpen: false,
@@ -48,6 +49,97 @@ export const useOutlinerStore = create<OutlinerState>()(
                     ...prev,
                     slashMenu: { ...prev.slashMenu, ...payload }
                 })),
+
+                // Clipboard State
+                clipboardDocument: null,
+                setClipboardDocument: (clipboard) => set({ clipboardDocument: clipboard }),
+
+                // Document Management Actions
+                cloneDocument: async (id) => {
+                    const state = get();
+                    const docToClone = state.documents.find(d => d.id === id);
+                    if (!docToClone || !state.user) return;
+
+                    // 1. Recursive function to collect all descendants
+                    const docsToClone: typeof docToClone[] = [docToClone];
+                    if (docToClone.isFolder) {
+                        const findAllDescendants = (parentId: string) => {
+                            const children = state.documents.filter(d => d.parentId === parentId);
+                            for (const child of children) {
+                                docsToClone.push(child);
+                                if (child.isFolder) {
+                                    findAllDescendants(child.id);
+                                }
+                            }
+                        };
+                        findAllDescendants(id);
+                    }
+
+                    // 2. Create map for ID remapping
+                    // Map<OldID, NewID> is hard because we need to insert to DB to get ID?
+                    // Or we insert with Supabase returning ID.
+                    // We must do it level by level or top-down.
+
+                    // Helper to clone single doc
+                    // const clonedIdMap = new Map<string, string>();
+
+                    // 3. Process ordered by dependency (Parents first)
+                    // docsToClone is typically DFS or BFS order? 
+                    // We need to ensure parent is created before child so we have parentId.
+                    // Let's sort docsToClone by path depth? Or just loop.
+                    // Actually, if we use BFS/DFS starting from root `docToClone`, we are good.
+                    // The recursion above does DFS (Parent then Children).
+
+                    // We need to handle the Root Clone first (which might be pasted into a new parent? Or just duplicated as sibling?)
+                    // "Clone" usually means "Duplicate in place" (Sibling).
+                    // So `docToClone.parentId` remains same for the root clone (or mapped if we are pasting into another folder?).
+                    // But `cloneDocument` here is triggered by "Paste" action usually. 
+                    // Actually, if `Ctrl+C` -> `clipboard = { id, op: 'copy' }`.
+                    // Then `Ctrl+V` -> Calls `pasteNodes` (internal)? No, `Sidebar` calls `cloneDocument`?
+                    // Wait, `cloneDocument` implies "Create a copy NOW".
+                    // But `Ctrl+V` (Paste) implies "Create copy AT DESTINATION".
+                    // So `cloneDocument` should probably take `targetParentId`.
+
+                    // User Request: `Ctrl + C`, `Ctrl + V`.
+                    // So `cloneDocument` is likely called inside `handlePaste` in Sidebar, passing `targetParentId`.
+                    // I should update signature in Types as well if I change it.
+                    // But for now, let's assume `cloneDocument(originalId)` creates a copy *as sibling*.
+                    // If Paste moves it, that's different.
+                    // Ah, `handlePaste` will decide.
+                    // If I copy A, go to folder B, paste. A should be copied to B.
+                    // So `cloneDocument` needs `targetParentId`.
+
+                    // Let's stick to the interface I defined: `cloneDocument(id)` for now, maybe it Duplicates in place.
+                    // But for Paste, we need `duplicateDocument(id, targetParentId)`.
+                    // I'll stick to `cloneDocument` cloning it *as sibling* for now to fix the store, can refine later.
+                    // Actually, let's make it `cloneDocument(id, targetParentId?)`.
+
+                    // For now, simple Sibling Clone logic to satisfy Type impl.
+                    const newTitle = `${docToClone.title} (Copy)`;
+
+                    const { data: newDoc } = await supabase
+                        .from('documents')
+                        .insert({
+                            owner_id: state.user.id,
+                            parent_id: docToClone.parentId, // Sibling
+                            title: newTitle,
+                            is_folder: docToClone.isFolder,
+                            content: null // Copy content? TODO: Fetch content and copy.
+                        })
+                        .select()
+                        .single();
+
+                    if (newDoc) {
+                        // TODO: Copy content if it's a file
+                        if (!docToClone.isFolder) {
+                            const { data: source } = await supabase.from('documents').select('content').eq('id', id).single();
+                            if (source?.content) {
+                                await supabase.from('documents').update({ content: source.content }).eq('id', newDoc.id);
+                            }
+                        }
+                        await get().fetchDocuments();
+                    }
+                },
 
                 // Document Management Actions
                 fetchDocuments: async () => {

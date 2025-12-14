@@ -14,6 +14,7 @@ export const InlineSearchPopup: React.FC<InlineSearchPopupProps> = ({ mode, quer
     const nodes = useOutlinerStore(state => state.nodes);
     const documents = useOutlinerStore(state => state.documents);
     const [selectedIndex, setSelectedIndex] = useState(0);
+    const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
 
     const getPath = (docId: string) => {
         const path: string[] = [];
@@ -34,10 +35,27 @@ export const InlineSearchPopup: React.FC<InlineSearchPopupProps> = ({ mode, quer
     };
 
     const results = useMemo(() => {
-        // if (!query) return []; // Allow empty query to show recent/all?
         const lowerQuery = query.toLowerCase();
 
         if (mode === 'document') {
+            if (!query) {
+                // Hierarchical Browsing Mode
+                return documents
+                    .filter(doc => doc.parentId === currentFolderId)
+                    .sort((a, b) => {
+                        if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
+                        return a.title.localeCompare(b.title);
+                    })
+                    .map(doc => ({
+                        id: doc.id,
+                        content: doc.title,
+                        type: 'document',
+                        path: getPath(doc.id),
+                        isFolder: doc.isFolder // Pass isFolder for navigation check
+                    }));
+            }
+
+            // Flat Search Mode
             return documents
                 .filter(doc => doc.title.toLowerCase().includes(lowerQuery))
                 .slice(0, 10)
@@ -45,15 +63,17 @@ export const InlineSearchPopup: React.FC<InlineSearchPopupProps> = ({ mode, quer
                     id: doc.id,
                     content: doc.title,
                     type: 'document',
-                    path: getPath(doc.id)
+                    path: getPath(doc.id),
+                    isFolder: doc.isFolder
                 }));
         } else {
+            // Node Mode (Flat)
             return Object.values(nodes)
                 .filter(node => node.content.toLowerCase().includes(lowerQuery) && node.content.trim().length > 0)
                 .slice(0, 10)
-                .map(node => ({ ...node, type: 'node', path: '' }));
+                .map(node => ({ ...node, type: 'node', path: '', isFolder: false }));
         }
-    }, [nodes, documents, query, mode]);
+    }, [nodes, documents, query, mode, currentFolderId]);
 
     const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -92,11 +112,44 @@ export const InlineSearchPopup: React.FC<InlineSearchPopupProps> = ({ mode, quer
                 e.preventDefault();
                 e.stopPropagation();
                 setSelectedIndex(prev => Math.max(prev - 1, 0));
+            } else if (e.key === 'ArrowRight') {
+                // Drill down if folder
+                if (mode === 'document' && !query) {
+                    const item = results[selectedIndex];
+                    // item type definition in results map has isFolder
+                    // We need to check if we can access it.
+                    // The mapped object isn't typed explicitly but JS allows access.
+                    if (item && (item as any).isFolder) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setCurrentFolderId(item.id);
+                        setSelectedIndex(0);
+                    }
+                }
+            } else if (e.key === 'ArrowLeft') {
+                // Go Up
+                if (mode === 'document' && !query && currentFolderId) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const curr = documents.find(d => d.id === currentFolderId);
+                    setCurrentFolderId(curr?.parentId || null);
+                    setSelectedIndex(0);
+                }
             } else if (e.key === 'Enter') {
                 e.preventDefault();
                 e.stopPropagation();
                 if (selectedIndex >= 0 && selectedIndex < results.length) {
-                    handleSelect(results[selectedIndex].id, results[selectedIndex].content);
+                    const item = results[selectedIndex];
+                    // If folder selected in browse mode, Enter also drills down? Or selects?
+                    // User said "Right arrow enters... Left arrow up.. Enter selects."
+                    // But if I select a folder link `[[Folder]]`? That's valid.
+                    // But usually we link to Docs.
+                    // If I hit Enter on a Folder, does it drill down or insert link?
+                    // User: "Enter is select".
+                    // However, linking to a Folder is possible.
+                    // If I want to drill down with Enter, I'd say so.
+                    // For now, strict: Right Arrow drills down, Enter selects (inserts link).
+                    handleSelect(item.id, item.content);
                 }
             } else if (e.key === 'Escape') {
                 e.preventDefault();
@@ -109,7 +162,13 @@ export const InlineSearchPopup: React.FC<InlineSearchPopupProps> = ({ mode, quer
         return () => window.removeEventListener('keydown', handleKeyDown, true);
     }, [results, selectedIndex, onSelect, onClose]);
 
-    if (results.length === 0) return null;
+    if (results.length === 0 && query) return null; // Hide if no results in Search Mode. Show empty in Browse mode?
+    // If browse mode and empty folder, show nothing or "Empty"?
+    // Logic: if results.length === 0, return null hides it.
+    // If I am browsing an empty folder, popup disappears. That's confusing.
+    // Should show "No items" or keep open?
+    // Let's allow empty render if browsing.
+    if (results.length === 0 && query) return null;
 
     return (
         <div
