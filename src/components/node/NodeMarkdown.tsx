@@ -66,9 +66,12 @@ export const NodeMarkdown: React.FC<NodeMarkdownProps> = ({ content }) => {
                 }
 
                 if (part.startsWith('[[') && part.endsWith(']]')) {
-                    // It's a wiki link: [[Title]]
-                    const linkText = part.slice(2, -2);
-                    const targetDoc = resolveDocument(linkText, documents);
+                    // It's a wiki link: [[Title]] or [[Title|Alias]]
+                    const rawContent = part.slice(2, -2);
+                    const [linkTarget, linkAlias] = rawContent.split('|');
+                    const displayText = linkAlias || linkTarget;
+
+                    const targetDoc = resolveDocument(linkTarget, documents);
 
                     if (targetDoc) {
                         return (
@@ -80,12 +83,12 @@ export const NodeMarkdown: React.FC<NodeMarkdownProps> = ({ content }) => {
                                     setActiveDocument(targetDoc.id);
                                 }}
                             >
-                                {linkText}
+                                {displayText}
                             </span>
                         );
                     } else {
                         // Broken link
-                        return <span key={index} className="text-red-400 opacity-60">[[{linkText}]]</span>;
+                        return <span key={index} className="text-red-400 opacity-60">[[{rawContent}]]</span>;
                     }
                 }
 

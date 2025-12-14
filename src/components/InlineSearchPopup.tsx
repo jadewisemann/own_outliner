@@ -71,13 +71,12 @@ export const InlineSearchPopup: React.FC<InlineSearchPopupProps> = ({ mode, quer
 
     const handleSelect = (id: string, title: string) => {
         if (mode === 'document') {
-            const isDuplicate = documents.filter(d => d.title === title).length > 1;
-            if (isDuplicate) {
-                const pathStr = getPath(id).replace(/ \/ /g, '/');
-                if (pathStr) {
-                    onSelect(id, `${pathStr}/${title}`);
-                    return;
-                }
+            const pathStr = getPath(id).replace(/ \/ /g, '/');
+            if (pathStr) {
+                // Nested document: Use qualified path with alias
+                // [[Folder/Doc|Doc]]
+                onSelect(id, `${pathStr}/${title}|${title}`);
+                return;
             }
         }
         onSelect(id, title);
