@@ -69,6 +69,20 @@ export const InlineSearchPopup: React.FC<InlineSearchPopupProps> = ({ mode, quer
         }
     }, [selectedIndex]);
 
+    const handleSelect = (id: string, title: string) => {
+        if (mode === 'document') {
+            const isDuplicate = documents.filter(d => d.title === title).length > 1;
+            if (isDuplicate) {
+                const pathStr = getPath(id).replace(/ \/ /g, '/');
+                if (pathStr) {
+                    onSelect(id, `${pathStr}/${title}`);
+                    return;
+                }
+            }
+        }
+        onSelect(id, title);
+    };
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'ArrowDown') {
@@ -83,7 +97,7 @@ export const InlineSearchPopup: React.FC<InlineSearchPopupProps> = ({ mode, quer
                 e.preventDefault();
                 e.stopPropagation();
                 if (selectedIndex >= 0 && selectedIndex < results.length) {
-                    onSelect(results[selectedIndex].id, results[selectedIndex].content);
+                    handleSelect(results[selectedIndex].id, results[selectedIndex].content);
                 }
             } else if (e.key === 'Escape') {
                 e.preventDefault();
@@ -109,7 +123,7 @@ export const InlineSearchPopup: React.FC<InlineSearchPopupProps> = ({ mode, quer
                     ref={(el) => { itemRefs.current[index] = el; }}
                     className={`px-3 py-2 text-sm cursor-pointer flex flex-col justify-center ${index === selectedIndex ? 'bg-blue-100' : 'hover:bg-gray-50'
                         }`}
-                    onClick={() => onSelect(item.id, item.content)}
+                    onClick={() => handleSelect(item.id, item.content)}
                     onMouseEnter={() => setSelectedIndex(index)}
                 >
                     {item.path && (

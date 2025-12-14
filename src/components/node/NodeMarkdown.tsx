@@ -17,6 +17,32 @@ const BLOCK_REF_REGEX = /(?<!\]\(|\]\(\()(\(\([a-zA-Z0-9-]+\)\))|(\[\[[^\]]+\]\]
 
 import { useOutlinerStore } from '@/store/useOutlinerStore'; // Import store
 
+const resolveDocument = (linkText: string, documents: any[]) => {
+    // 1. Exact match first (optimization & fast path for simple links)
+    const exactMatch = documents.find(d => d.title === linkText);
+    if (exactMatch) return exactMatch;
+
+    // 2. Path resolution
+    const parts = linkText.split('/');
+    if (parts.length <= 1) return null; // Already checked exact match above
+
+    const targetTitle = parts.pop() || '';
+    const pathSegments = parts.reverse(); // Bottom-up validation
+
+    const candidates = documents.filter(d => d.title === targetTitle);
+
+    return candidates.find(doc => {
+        let current = doc;
+        for (const segment of pathSegments) {
+            if (!current.parentId) return false;
+            const parent = documents.find(d => d.id === current.parentId);
+            if (!parent || parent.title !== segment) return false;
+            current = parent;
+        }
+        return true;
+    });
+};
+
 export const NodeMarkdown: React.FC<NodeMarkdownProps> = ({ content }) => {
     const documents = useOutlinerStore(state => state.documents);
     const setActiveDocument = useOutlinerStore(state => state.setActiveDocument);
@@ -41,8 +67,8 @@ export const NodeMarkdown: React.FC<NodeMarkdownProps> = ({ content }) => {
 
                 if (part.startsWith('[[') && part.endsWith(']]')) {
                     // It's a wiki link: [[Title]]
-                    const title = part.slice(2, -2);
-                    const targetDoc = documents.find(d => d.title === title);
+                    const linkText = part.slice(2, -2);
+                    const targetDoc = resolveDocument(linkText, documents);
 
                     if (targetDoc) {
                         return (
@@ -54,12 +80,12 @@ export const NodeMarkdown: React.FC<NodeMarkdownProps> = ({ content }) => {
                                     setActiveDocument(targetDoc.id);
                                 }}
                             >
-                                {title}
+                                {linkText}
                             </span>
                         );
                     } else {
                         // Broken link
-                        return <span key={index} className="text-red-400 opacity-60">[[{title}]]</span>;
+                        return <span key={index} className="text-red-400 opacity-60">[[{linkText}]]</span>;
                     }
                 }
 
