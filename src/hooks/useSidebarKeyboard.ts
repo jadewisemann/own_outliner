@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useSidebarContext } from '@/components/layout/sidebar/SidebarContext';
-import { useOutlinerStore } from '@/store/useOutlinerStore';
+import { useOutlinerStore } from '@/store/outliner';
 import type { Document } from '@/types/outliner';
 
 export const useSidebarKeyboard = () => {

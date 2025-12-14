@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { debounce } from 'lodash-es';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
-import { useOutlinerStore } from './store/useOutlinerStore';
+import { useOutlinerStore } from '@/store/outliner';
 import { NodeItem } from './components/NodeItem';
 import { SettingsModal } from './components/SettingsModal';
 import { SearchModal } from './components/SearchModal';

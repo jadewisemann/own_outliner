@@ -15,7 +15,7 @@ interface NodeMarkdownProps {
 // 2. [[Title]]
 const BLOCK_REF_REGEX = /(?<!\]\(|\]\(\()(\(\([a-zA-Z0-9-]+\)\))|(\[\[[^\]]+\]\])/g;
 
-import { useOutlinerStore } from '@/store/useOutlinerStore'; // Import store
+import { useOutlinerStore } from '@/store/outliner'; // Import store
 
 const resolveDocument = (linkText: string, documents: any[]) => {
     // 1. Exact match first (optimization & fast path for simple links)

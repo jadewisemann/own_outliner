@@ -546,13 +546,4 @@ export const useOutlinerStore = create<OutlinerState>()(
     )
 );
 
-// Auto-Sync Handling using subscription
-// We can Disable the old "Push" logic since Yjs Provider handles sync!
-/*
-let syncTimeout: ReturnType<typeof setTimeout> | null = null;
-const DEBOUNCE_MS = 3000;
 
-useOutlinerStore.subscribe((state, prevState) => {
-    // ... disable old push ...
-});
-*/

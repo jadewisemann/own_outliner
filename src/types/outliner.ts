@@ -67,6 +67,13 @@ export interface Document {
     rank?: string; // For manual sorting (lexorank or simple float)
 }
 
+export interface ConflictState {
+    isOpen: boolean;
+    draggedId: string;
+    targetId: string | null;
+    initialName: string;
+}
+
 export interface OutlinerState {
     nodes: Record<NodeId, NodeData>;
     rootNodeId: NodeId;

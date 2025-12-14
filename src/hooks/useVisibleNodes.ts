@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useOutlinerStore } from '../store/useOutlinerStore';
+import { useOutlinerStore } from '../store/outliner';
 import type { NodeId } from '../types/outliner';
 
 export interface FlatNode {
