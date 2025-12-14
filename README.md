@@ -74,8 +74,7 @@ Dynalist와 Workflowy에서 영감을 받아, 마우스 없이 키보드만으�
 - [x] 가상화 (Virtualization): react-virtuoso를 도입하여 대용량 노드 렌더링 성능 최적화.
 - [ ] OPML 내보내기/가져오기: 백업 및 다른 아웃라이너와의 호환성.
 
-### Phase 4: 확장성 (Scalability)
-- [x] 가상화 (Virtualization): react-virtuoso를 도입하여 대용량 노드 렌더링 성능 최적화.
+### Phase 5: 확장성 (Scalability)
 - [ ] OPML 내보내기/가져오기: 백업 및 다른 아웃라이너와의 호환성.
 
 ### FIX
@@ -83,7 +82,12 @@ Dynalist와 Workflowy에서 영감을 받아, 마우스 없이 키보드만으�
     - node의 맨앞에서는 현재 노드의 위에 생겨야 함
 - [ ] 슬래쉬 (/)가 생겼을 때 포커스 깨짐
 - [ ] undo/redo
-- [ ] internal li
+- [ ] internal link
+    - [[uuid || 문서이름]]
+    - ((node's uuid))
+    - 위로 그냥 다른 문법으로 쓰고 랜더링만 덮어씌우는게 좋을지도
+- [ ] 최상단의 라인이 지워지면 커서가 포커스를 잃어버림
+    - 포커스를 다음 노드로 이전시킬것
 
 ### TODO
 - [ ] logical indentation
@@ -102,6 +106,9 @@ Dynalist와 Workflowy에서 영감을 받아, 마우스 없이 키보드만으�
 
 - [ ] 외형 설정
     - 폰트, 강조 색, 배경 색, 폭 등
+    - 디자인 요소 추출 후 ai studio에 프롬프팅해서 추출
+    - vsc 태마 importer
+    - 터미널 12색 importer
 - [ ] 내장 theme
 
 - [ ] 외부 CSS 사이드로드

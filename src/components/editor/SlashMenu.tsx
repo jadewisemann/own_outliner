@@ -21,29 +21,39 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ position, onSelect, onClos
     { type: 'code', label: 'Code Block', icon: Code, desc: 'Capture code snippets.' },
   ] as const;
 
+  // Use ref to access latest selectedIndex in event listener without re-binding
+  const selectedIndexRef = useRef(selectedIndex);
+  useEffect(() => {
+    selectedIndexRef.current = selectedIndex;
+  }, [selectedIndex]);
+
   useEffect(() => {
     if (position) {
       setSelectedIndex(0);
       const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'ArrowDown') {
+        if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) {
           e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+        }
+
+        if (e.key === 'ArrowDown') {
           setSelectedIndex(i => (i + 1) % items.length);
         } else if (e.key === 'ArrowUp') {
-          e.preventDefault();
           setSelectedIndex(i => (i - 1 + items.length) % items.length);
         } else if (e.key === 'Enter') {
-          e.preventDefault();
-          onSelect(items[selectedIndex].type as NodeType);
+          onSelect(items[selectedIndexRef.current].type as NodeType);
           onClose();
         } else if (e.key === 'Escape') {
-          e.preventDefault();
           onClose();
         }
       };
-      window.addEventListener('keydown', handleKeyDown, true); // Capture phase to prevent editor handling
+
+      // Capture phase to intercept events before they reach the editor input
+      window.addEventListener('keydown', handleKeyDown, true);
       return () => window.removeEventListener('keydown', handleKeyDown, true);
     }
-  }, [position, selectedIndex, onSelect, onClose]);
+  }, [position, onSelect, onClose]); // selectedIndex removed from deps
 
   // Close if clicked outside
   useEffect(() => {

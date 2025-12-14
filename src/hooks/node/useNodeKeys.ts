@@ -24,6 +24,25 @@ export const useNodeKeys = (
         const currentState = useOutlinerStore.getState();
         const currentKeys = currentState.settings.keybindings;
 
+        if (currentState.slashMenu.isOpen) {
+            // Let the SlashMenu handle navigation via its window listener.
+            // But we must block internal handlers (moveNode, etc) from firing.
+            // ArrowUp/Down/Enter are the main ones managed by SlashMenu.
+
+            // However, useNodeKeys's handleKeyDown logic processes "moveNode" (Alt+Arrow) and "moveFocus" (Arrow).
+            // We should block plain arrows. 
+            // Alt+Arrows might be fine? No, usually menu navigation takes precedence.
+
+            // SlashMenu uses: ArrowUp, ArrowDown, Enter, Escape.
+            if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) {
+                return; // Do nothing, let global listener handle (or let it bubble)
+                // Actually, SlashMenu uses capture phase window listener.
+                // The issue was: useNodeKeys ALSO runs.
+                // If we return here, we skip 'handleCommonActions' and 'handleFocusNavigation'.
+                // So the editor WON'T move focus. Correct.
+            }
+        }
+
         if (handleCommonActions(e, currentKeys, currentState, id)) return;
         if (handleFocusNavigation(e, currentKeys, currentState)) return;
 
