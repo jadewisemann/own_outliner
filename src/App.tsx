@@ -29,7 +29,7 @@ function App() {
 
   const flatNodes = useVisibleNodes();
   const virtuosoRef = useRef<VirtuosoHandle>(null);
-  // ... existing code ...
+
 
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -93,7 +93,7 @@ function App() {
     initializeSync(); // Starts Yjs provider
   }, [user, initializeSync]);
 
-  // if (!rootNode) return <div className="p-10 text-slate-400">Loading...</div>; // Moved inside
+
 
   // Mobile Toolbar Handlers
   const handleAddNode = () => {
@@ -109,7 +109,7 @@ function App() {
     if (focusedId) outdentNode(focusedId);
   };
 
-  // Header Inputs - MOVING HOOKS UP
+
   const documents = useOutlinerStore((state) => state.documents);
   const activeDocumentId = useOutlinerStore((state) => state.activeDocumentId);
   const setFocus = useOutlinerStore((state) => state.setFocus);
@@ -186,7 +186,7 @@ function App() {
 
   // -- EARLY RETURNS AFTER HOOKS --
 
-  // if (!rootNode) return <div className="p-10 text-slate-400">Loading...</div>; // Moved inside
+
 
   if (!user) {
     return <LoginModal />;
