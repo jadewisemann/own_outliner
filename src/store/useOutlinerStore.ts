@@ -103,12 +103,42 @@ export const useOutlinerStore = create<OutlinerState>()(
                     const state = get();
                     if (!state.user) return;
 
+                    let finalTitle = title;
+                    const docs = state.documents;
+
+                    if (!isFolder) {
+                        // Files: Global Uniqueness (among files)
+                        let counter = 1;
+                        let candidate = finalTitle;
+                        while (docs.some(d => !d.isFolder && d.title === candidate)) {
+                            candidate = `${finalTitle} (${counter})`;
+                            counter++;
+                        }
+                        finalTitle = candidate;
+                    } else {
+                        // Folders: Sibling Uniqueness (among all items in same parent)
+                        let counter = 1;
+                        let candidate = finalTitle;
+                        // Check against any sibling (File or Folder) to avoid confusion? 
+                        // Or just Folders? User example was "Folder inside Folder".
+                        // Standard FS: file 'a' and folder 'a' conflicts.
+                        // But since Files are global, checking against files here might force Folder to avoid File name even if File is elsewhere?
+                        // No, `parentId` check.
+                        // If File is elsewhere, `d.parentId` differs.
+                        // So checking `d.parentId === parentId` catches local siblings.
+                        while (docs.some(d => d.parentId === parentId && d.title === candidate)) {
+                            candidate = `${finalTitle} (${counter})`;
+                            counter++;
+                        }
+                        finalTitle = candidate;
+                    }
+
                     const { data, error } = await supabase
                         .from('documents')
                         .insert({
                             owner_id: state.user.id,
                             parent_id: parentId,
-                            title,
+                            title: finalTitle,
                             is_folder: isFolder,
                             content: null
                         })
@@ -142,9 +172,36 @@ export const useOutlinerStore = create<OutlinerState>()(
                 },
 
                 renameDocument: async (id, title) => {
+                    const state = get();
+                    const docs = state.documents;
+                    const doc = docs.find(d => d.id === id);
+                    if (!doc) return;
+
+                    let finalTitle = title;
+
+                    if (!doc.isFolder) {
+                        // Files: Global Uniqueness
+                        let counter = 1;
+                        let candidate = finalTitle;
+                        while (docs.some(d => d.id !== id && !d.isFolder && d.title === candidate)) {
+                            candidate = `${finalTitle} (${counter})`;
+                            counter++;
+                        }
+                        finalTitle = candidate;
+                    } else {
+                        // Folders: Sibling Uniqueness
+                        let counter = 1;
+                        let candidate = finalTitle;
+                        while (docs.some(d => d.id !== id && d.parentId === doc.parentId && d.title === candidate)) {
+                            candidate = `${finalTitle} (${counter})`;
+                            counter++;
+                        }
+                        finalTitle = candidate;
+                    }
+
                     const { error } = await supabase
                         .from('documents')
-                        .update({ title, updated_at: new Date().toISOString() })
+                        .update({ title: finalTitle, updated_at: new Date().toISOString() })
                         .eq('id', id);
 
                     if (error) {
