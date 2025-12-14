@@ -6,6 +6,8 @@ import {
   Plus, MoreHorizontal, Trash2, Edit2, FolderPlus, ArrowDownAZ
 } from 'lucide-react';
 
+import { PromptModal } from '@/components/ui/PromptModal';
+
 interface SidebarProps {
   className?: string;
   onClose?: () => void;
@@ -14,13 +16,21 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
   const {
     documents, fetchDocuments, createDocument,
-    deleteDocument, renameDocument, setActiveDocument, activeDocumentId
+    deleteDocument, renameDocument, setActiveDocument, activeDocumentId, moveDocument
   } = useOutlinerStore();
 
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
   const [contextMenu, setContextMenu] = useState<{ id: string, x: number, y: number } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+
+  // Conflict Modal State
+  const [conflictState, setConflictState] = useState<{
+    isOpen: boolean;
+    draggedId: string;
+    targetId: string | null;
+    initialName: string;
+  } | null>(null);
 
   // Sorting State
   const [sortOrder, setSortOrder] = useState<'none' | 'name'>('none');
@@ -73,8 +83,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
-  const { moveDocument } = useOutlinerStore();
-
   const handleDragStart = (e: React.DragEvent, id: string) => {
     e.stopPropagation();
     setDraggedId(id);
@@ -112,26 +120,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
 
     // Check for conflict
     const siblings = documents.filter(d => d.parentId === targetId && d.id !== draggedId);
-    const hasConflict = siblings.some(s => s.title === draggedDoc.title);
+    let candidate = draggedDoc.title;
 
-    if (hasConflict) {
-      const newName = window.prompt(`대상 폴더에 '${draggedDoc.title}' 이름이 이미 존재합니다.\n이름을 변경하여 이동하시겠습니까?`, draggedDoc.title);
-      if (newName === null) return; // Cancelled
-
-      const trimmedName = newName.trim();
-      if (trimmedName && trimmedName !== draggedDoc.title) {
-        await renameDocument(draggedId, trimmedName);
-        // Move after rename
-        await moveDocument(draggedId, targetId);
-      } else if (trimmedName === draggedDoc.title) {
-        // User kept same name -> Conflict persists. Cancel move.
-        alert("같은 이름으로 이동할 수 없습니다.");
+    // Only if collision exists with original name
+    if (siblings.some(s => s.title === candidate)) {
+      let counter = 1;
+      while (siblings.some(s => s.title === candidate)) {
+        candidate = `${draggedDoc.title} (${counter})`;
+        counter++;
       }
-    } else {
-      console.log(`Moving ${draggedId} to ${targetId || 'root'}`);
-      await moveDocument(draggedId, targetId);
+
+      setConflictState({
+        isOpen: true,
+        draggedId: draggedId,
+        targetId: targetId,
+        initialName: candidate // Suggestion
+      });
+      setDraggedId(null);
+      return;
     }
 
+    console.log(`Moving ${draggedId} to ${targetId || 'root'}`);
+    await moveDocument(draggedId, targetId);
     setDraggedId(null);
   };
 
@@ -333,6 +343,38 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
             </button>
           </div>
         </>
+      )}
+
+      {/* Conflict Resolution Modal */}
+      {conflictState && (
+        <PromptModal
+          isOpen={true}
+          title="이름 충돌"
+          message={`대상 폴더에 같은 이름이 존재합니다.\n'${conflictState.initialName}'(으)로 변경하여 이동하시겠습니까?`}
+          initialValue={conflictState.initialName}
+          onConfirm={async (newName) => {
+            const trimmed = newName.trim();
+            const doc = documents.find(d => d.id === conflictState.draggedId);
+
+            if (!doc) {
+              setConflictState(null);
+              return;
+            }
+
+            if (trimmed && trimmed !== doc.title) {
+              await renameDocument(conflictState.draggedId, trimmed);
+              await moveDocument(conflictState.draggedId, conflictState.targetId);
+              setConflictState(null); // Close on success
+            } else {
+              // If matches original title, conflict persists
+              if (trimmed === doc.title) {
+                alert("이미 존재하는 이름입니다. 이동할 수 없습니다.");
+                // Modal remains open
+              }
+            }
+          }}
+          onCancel={() => setConflictState(null)}
+        />
       )}
     </div>
   );
