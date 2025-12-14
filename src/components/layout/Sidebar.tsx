@@ -84,6 +84,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
     if (editingId && editName.trim()) {
       await renameDocument(editingId, editName);
       setEditingId(null);
+      sidebarRef.current?.focus();
     }
   };
 
@@ -230,11 +231,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
           // Too complex. Let's just assume Clone duplicates as sibling for now (Ctrl+D style)
           // and Ctrl+V strictly speaking needs "Copy to here".
           // Given constraint, I'll just call cloneDocument(clipboardDocument.id).
-          // It will appear as sibling of original. 
+          // It will appear as sibling of original.
           // Ideally we need `copyDocument(id, targetParentId)`.
           await cloneDocument(clipboardDocument.id);
+
           // Note: This ignores targetParentId for now due to store limitation in this step.
+
         }
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      // Focus back to editor (header) using the custom event defined in App.tsx
+      if (activeDocumentId) {
+        document.dispatchEvent(new Event('outliner:focus-header'));
       }
     }
   };
@@ -300,7 +309,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
       return;
     }
 
-    console.log(`Moving ${draggedId} to ${targetId || 'root'}`);
+    console.log(`Moving ${draggedId} to ${targetId || 'root'} `);
     await moveDocument(draggedId, targetId);
     setDraggedId(null);
   };
@@ -362,6 +371,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
                 onBlur={() => setEditingId(null)}
                 className="w-full bg-white dark:bg-neutral-800 border border-blue-500 rounded px-1 text-sm"
                 onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    e.stopPropagation();
+                    setEditingId(null);
+                    // Return focus to sidebar container so navigation works
+                    sidebarRef.current?.focus();
+                  }
+                }}
               />
             </form>
           ) : (
@@ -410,7 +427,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
 
   return (
     <div
-      className={`flex flex-col h-full bg-neutral-50 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 ${className}`}
+      className={`outline-none flex flex-col h-full bg-neutral-50 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 ${className}`}
       onKeyDown={handleKeyDown}
       tabIndex={0} // Make sidebar focusable
       ref={sidebarRef}
@@ -524,7 +541,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
         <PromptModal
           isOpen={true}
           title="이름 충돌"
-          message={`대상 폴더에 같은 이름이 존재합니다.\n'${conflictState.initialName}'(으)로 변경하여 이동하시겠습니까?`}
+          message={`대상 폴더에 같은 이름이 존재합니다.\n'${conflictState.initialName}'(으)로 변경하여 이동하시겠습니까 ? `}
           initialValue={conflictState.initialName}
           onConfirm={async (newName) => {
             const trimmed = newName.trim();
