@@ -368,6 +368,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
             <form onSubmit={handleRename} className="flex-1">
               <input
                 autoFocus
+                onFocus={(e) => e.target.select()}
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 onBlur={() => setEditingId(null)}
