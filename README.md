@@ -80,7 +80,11 @@ Dynalist와 Workflowy에서 영감을 받아, 마우스 없이 키보드만으�
 ### FIX
 - [x] break line login
     - node의 맨앞에서는 현재 노드의 위에 생겨야 함
-- [ ] 슬래쉬 (/)가 생겼을 때 포커스 깨짐
+- [x] 슬래쉬 (/)가 생겼을 때 포커스 깨짐
+- [ ] 인라인 포매팅 (md-like)
+- [ ] 제목에서 enter 시 동작...
+    - 제목도 쪼개지게 할까? 
+    - 아님 어디서든 enter 누르면 아래에 새로운 줄 생기게?
 - [ ] undo/redo
 - [ ] internal link
     - [[uuid || 문서이름]]

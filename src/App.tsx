@@ -239,9 +239,12 @@ function App() {
       {slashMenu.isOpen && slashMenu.position && (
         <SlashMenu
           position={slashMenu.position}
+          filterText={slashMenu.filterText}
           onClose={() => setSlashMenu({ isOpen: false, position: null, targetNodeId: null })}
           onSelect={(type) => {
             if (slashMenu.targetNodeId) {
+              // Clear the command text (e.g. "/heading")
+              useOutlinerStore.getState().updateContent(slashMenu.targetNodeId, '');
               updateType(slashMenu.targetNodeId, type);
             }
           }}

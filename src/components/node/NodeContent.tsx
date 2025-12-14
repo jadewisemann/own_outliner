@@ -123,13 +123,30 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id }) => {
                 onChange={(e) => {
                     const val = e.target.value;
                     updateContent(id, val);
-                    if (val === '/') {
+
+                    // Slash Menu Trigger Logic
+                    if (val.startsWith('/')) {
+                        // Extract text after '/'
+                        const filterText = val.slice(1);
                         const rect = e.target.getBoundingClientRect();
                         setSlashMenu({
                             isOpen: true,
                             position: { x: rect.left, y: rect.bottom },
-                            targetNodeId: id
+                            targetNodeId: id,
+                            filterText
                         });
+                    } else {
+                        // Close if it was open (we assume if we are editing and it doesn't start with /, we close it)
+                        // Actually, we should check if it IS open to avoid unnecessary updates?
+                        // Store update is cheap enough.
+                        // But wait, if I just type "Hello", I shouldn't be calling setSlashMenu(false) on every keystroke if it's already false.
+                        // We don't have access to 'slashMenu.isOpen' here easily without subscribing.
+                        // Let's just call it, Zustand will dedup if primitive? No, it's an object setter.
+                        // Optimization: Check via useNodeLogic if exposed? 
+                        // For now, let's just send isOpen: false if it doesn't start with /.
+                        // Actually, we can just do nothing if it doesn't start with /? 
+                        // No, if I backspace and remove /, it should close.
+                        setSlashMenu({ isOpen: false, position: null, targetNodeId: null });
                     }
                 }}
                 onKeyDown={handleKeyDown}
