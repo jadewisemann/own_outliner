@@ -107,8 +107,31 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
     setDragOverId(null);
     if (!draggedId || draggedId === targetId) return;
 
-    console.log(`Moving ${draggedId} to ${targetId || 'root'}`);
-    await moveDocument(draggedId, targetId);
+    const draggedDoc = documents.find(d => d.id === draggedId);
+    if (!draggedDoc) return;
+
+    // Check for conflict
+    const siblings = documents.filter(d => d.parentId === targetId && d.id !== draggedId);
+    const hasConflict = siblings.some(s => s.title === draggedDoc.title);
+
+    if (hasConflict) {
+      const newName = window.prompt(`대상 폴더에 '${draggedDoc.title}' 이름이 이미 존재합니다.\n이름을 변경하여 이동하시겠습니까?`, draggedDoc.title);
+      if (newName === null) return; // Cancelled
+
+      const trimmedName = newName.trim();
+      if (trimmedName && trimmedName !== draggedDoc.title) {
+        await renameDocument(draggedId, trimmedName);
+        // Move after rename
+        await moveDocument(draggedId, targetId);
+      } else if (trimmedName === draggedDoc.title) {
+        // User kept same name -> Conflict persists. Cancel move.
+        alert("같은 이름으로 이동할 수 없습니다.");
+      }
+    } else {
+      console.log(`Moving ${draggedId} to ${targetId || 'root'}`);
+      await moveDocument(draggedId, targetId);
+    }
+
     setDraggedId(null);
   };
 
@@ -172,7 +195,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
           )}
 
           <button
-            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded"
+            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded mr-1"
+            title={item.isFolder ? "폴더 문서 열기" : "설정"}
             onClick={(e) => {
               e.stopPropagation();
               setContextMenu({ id: item.id, x: e.clientX, y: e.clientY });
@@ -180,6 +204,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
           >
             <MoreHorizontal size={14} />
           </button>
+
+          {item.isFolder && (
+            <button
+              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded"
+              title="폴더 문서 편집"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveDocument(item.id);
+              }}
+            >
+              <Edit2 size={14} />
+            </button>
+          )}
         </div>
 
         {item.isFolder && isExpanded && (
@@ -234,14 +271,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, onClose }) => {
           // Allow dropping on empty space to move to root
           e.dataTransfer.dropEffect = 'move';
         }}
-        onDrop={(e) => {
-          e.preventDefault();
-          // If dropped on root container (not handled by item stopPropagation), move to root
-          if (draggedId) {
-            moveDocument(draggedId, null);
-            setDraggedId(null);
-          }
-        }}
+        onDrop={(e) => handleDrop(e, null)}
       >
         {buildTree(null).map(item => renderItem(item))}
       </div>
