@@ -3,27 +3,38 @@ import { useOutlinerStore } from '@/store/useOutlinerStore';
 import type { NodeId } from '@/types/outliner';
 
 interface InlineSearchPopupProps {
+    mode: 'node' | 'document';
     query: string;
     position: { top: number; left: number };
-    onSelect: (nodeId: NodeId, content: string) => void;
+    onSelect: (id: string, label: string) => void;
     onClose: () => void;
 }
 
-export const InlineSearchPopup: React.FC<InlineSearchPopupProps> = ({ query, position, onSelect, onClose }) => {
+export const InlineSearchPopup: React.FC<InlineSearchPopupProps> = ({ mode, query, position, onSelect, onClose }) => {
     const nodes = useOutlinerStore(state => state.nodes);
+    const documents = useOutlinerStore(state => state.documents);
     const [selectedIndex, setSelectedIndex] = useState(0);
 
     const results = useMemo(() => {
-        if (!query) return [];
+        // if (!query) return []; // Allow empty query to show recent/all?
         const lowerQuery = query.toLowerCase();
-        return Object.values(nodes)
-            .filter(node => node.content.toLowerCase().includes(lowerQuery) && node.content.trim().length > 0)
-            .slice(0, 10); // Limit to 10
-    }, [nodes, query]);
+
+        if (mode === 'document') {
+            return documents
+                .filter(doc => doc.title.toLowerCase().includes(lowerQuery))
+                .slice(0, 10)
+                .map(doc => ({ id: doc.id, content: doc.title, type: 'document' }));
+        } else {
+            return Object.values(nodes)
+                .filter(node => node.content.toLowerCase().includes(lowerQuery) && node.content.trim().length > 0)
+                .slice(0, 10)
+                .map(node => ({ ...node, type: 'node' }));
+        }
+    }, [nodes, documents, query, mode]);
 
     useEffect(() => {
         setSelectedIndex(0);
-    }, [query]);
+    }, [query, mode]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -44,7 +55,7 @@ export const InlineSearchPopup: React.FC<InlineSearchPopupProps> = ({ query, pos
             }
         };
 
-        window.addEventListener('keydown', handleKeyDown, true); // Capture phase to override other handlers?
+        window.addEventListener('keydown', handleKeyDown, true);
         return () => window.removeEventListener('keydown', handleKeyDown, true);
     }, [results, selectedIndex, onSelect, onClose]);
 
@@ -52,18 +63,19 @@ export const InlineSearchPopup: React.FC<InlineSearchPopupProps> = ({ query, pos
 
     return (
         <div
-            className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-xl w-64 max-h-48 overflow-y-auto"
-            style={{ top: position.top + 20, left: position.left }}
+            className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-xl w-64 max-h-48 overflow-y-auto font-sans"
+            style={{ top: position.top + 5, left: position.left }}
         >
-            {results.map((node, index) => (
+            {results.map((item, index) => (
                 <div
-                    key={node.id}
-                    className={`px-3 py-2 text-sm cursor-pointer truncate ${index === selectedIndex ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-50 text-gray-700'
+                    key={item.id}
+                    className={`px-3 py-2 text-sm cursor-pointer truncate flex items-center justify-between ${index === selectedIndex ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-50 text-gray-700'
                         }`}
-                    onClick={() => onSelect(node.id, node.content)}
+                    onClick={() => onSelect(item.id, item.content)}
                     onMouseEnter={() => setSelectedIndex(index)}
                 >
-                    <div className="font-medium text-gray-800 truncate">{node.content || 'Empty Node'}</div>
+                    <div className="font-medium text-gray-800 truncate">{item.content || 'Untitled'}</div>
+                    {mode === 'document' && <span className="text-xs text-gray-400 ml-2">Doc</span>}
                 </div>
             ))}
         </div>

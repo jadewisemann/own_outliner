@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import { useState, useRef } from 'react'; // Added useState
 import type { NodeId } from '@/types/outliner';
 import { useNodeLogic } from '@/hooks/node/useNodeLogic';
 import { useNodeFocusProcessing } from '@/hooks/node/useNodeFocusProcessing';
@@ -8,6 +8,7 @@ import { useNodeKeys } from '@/hooks/node/useNodeKeys';
 import { Check, Terminal } from 'lucide-react';
 import { NodeBacklinksIndicator } from './NodeBacklinksIndicator';
 import { NodeMarkdown } from './NodeMarkdown';
+import { InlineSearchPopup } from '@/components/InlineSearchPopup'; // Imported
 
 // We'll use a simplified ContentInput for now, but configured with types
 interface NodeContentProps {
@@ -28,6 +29,21 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id }) => {
         setSlashMenu,
 
     } = useNodeLogic(id);
+
+    // Popup State
+    const [linkPopup, setLinkPopup] = useState<{
+        isOpen: boolean;
+        type: 'node' | 'document';
+        position: { top: number; left: number };
+        query: string;
+        triggerIndex: number;
+    }>({
+        isOpen: false,
+        type: 'node',
+        position: { top: 0, left: 0 },
+        query: '',
+        triggerIndex: -1
+    });
 
     const inputRef = useRef<HTMLInputElement>(null);
     const containerRef = useRef<HTMLDivElement>(null); // For future use if we make the container focusable
@@ -147,9 +163,10 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id }) => {
 
                         updateContent(id, val);
 
-                        // Slash Menu Trigger Logic
+
+
+                        // 1. Slash Menu Trigger
                         if (val.startsWith('/')) {
-                            // Extract text after '/'
                             const filterText = val.slice(1);
                             const rect = e.target.getBoundingClientRect();
                             setSlashMenu({
@@ -160,6 +177,57 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id }) => {
                             });
                         } else {
                             setSlashMenu({ isOpen: false, position: null, targetNodeId: null });
+                        }
+
+                        // 2. Internal Link Trigger ([[ or (())
+                        // Match last occurrence of [[ or ((
+                        // Regex: /\[\[([^\]]*)$/ or /\(\(([^\)]*)$/
+                        // Actually easier to match generic trigger chars
+                        const selectionStart = e.target.selectionStart || 0;
+                        const textBeforeCursor = val.slice(0, selectionStart);
+
+                        // Check for [[
+                        const docMatch = textBeforeCursor.match(/\[\[([^\]]*)$/);
+                        if (docMatch) {
+                            const query = docMatch[1];
+                            const rect = e.target.getBoundingClientRect();
+                            // Approximate left pos: rect.left + measureText(beforeMatch)?
+                            // For MVP, stick to rect.left + offset or similar. 
+                            // Better: rect.left + (docMatch.index * ch_width)
+                            const chWidth = 7.5; // Approx for default font
+                            const leftOffset = (docMatch.index || 0) * chWidth;
+
+                            setLinkPopup({
+                                isOpen: true,
+                                type: 'document',
+                                position: { top: rect.bottom, left: rect.left + leftOffset },
+                                query,
+                                triggerIndex: docMatch.index!
+                            });
+                            return;
+                        }
+
+                        // Check for ((
+                        const nodeMatch = textBeforeCursor.match(/\(\(([^\)]*)$/);
+                        if (nodeMatch) {
+                            const query = nodeMatch[1];
+                            const rect = e.target.getBoundingClientRect();
+                            const chWidth = 7.5;
+                            const leftOffset = (nodeMatch.index || 0) * chWidth;
+
+                            setLinkPopup({
+                                isOpen: true,
+                                type: 'node',
+                                position: { top: rect.bottom, left: rect.left + leftOffset },
+                                query,
+                                triggerIndex: nodeMatch.index!
+                            });
+                            return;
+                        }
+
+                        // If no match, close popup
+                        if (linkPopup.isOpen) {
+                            setLinkPopup(prev => ({ ...prev, isOpen: false }));
                         }
                     }}
                     onKeyDown={handleKeyDown}
@@ -173,17 +241,50 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id }) => {
                 <div
                     className={`w-full min-h-[1.5rem] cursor-text ${getStyles()}`}
                     onClick={(e) => {
-                        // If clicking a link, don't focus? 
-                        // NodeMarkdown links have stopPropagation.
-                        // So clicking here means clicking empty space or text.
                         e.stopPropagation();
-                        // setFocus might need timeout if we are unmounting preview?
-                        // No, setFocus triggers re-render with isFocused=true.
                         setFocus(id);
                     }}
                 >
                     <NodeMarkdown content={node.content} />
                 </div>
+            )}
+
+            {/* Internal Link Popup */}
+            {linkPopup.isOpen && (
+                <InlineSearchPopup
+                    mode={linkPopup.type}
+                    query={linkPopup.query}
+                    position={linkPopup.position}
+                    onSelect={(selectedId, selectedContent) => {
+                        const value = node.content;
+                        const triggerIdx = linkPopup.triggerIndex;
+                        const before = value.substring(0, triggerIdx);
+
+                        const queryLen = linkPopup.query.length;
+                        const after = value.substring(triggerIdx + 2 + queryLen);
+
+                        let insertion = '';
+                        if (linkPopup.type === 'document') {
+                            insertion = `[[${selectedContent}]]`;
+                        } else {
+                            insertion = `((${selectedId}))`;
+                        }
+
+                        const newValue = before + insertion + after;
+                        updateContent(id, newValue);
+
+                        setLinkPopup({ isOpen: false, type: 'node', position: { top: 0, left: 0 }, query: '', triggerIndex: -1 });
+
+                        requestAnimationFrame(() => {
+                            if (inputRef.current) {
+                                inputRef.current.focus();
+                                // const newCursor = before.length + insertion.length; 
+                                // inputRef.current.setSelectionRange(newCursor, newCursor);
+                            }
+                        });
+                    }}
+                    onClose={() => setLinkPopup({ isOpen: false, type: 'node', position: { top: 0, left: 0 }, query: '', triggerIndex: -1 })}
+                />
             )}
 
             {/* Indicators */}
