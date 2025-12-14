@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useOutlinerStore } from '@/store/useOutlinerStore';
-import type { NodeId } from '@/types/outliner';
+// NodeId import removed
 
 interface InlineSearchPopupProps {
     mode: 'node' | 'document';

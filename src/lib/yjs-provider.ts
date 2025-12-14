@@ -5,6 +5,8 @@ import * as syncProtocol from 'y-protocols/sync';
 import * as encoding from 'lib0/encoding';
 import * as decoding from 'lib0/decoding';
 
+const messageAwareness = 3;
+
 export class SupabaseProvider {
     doc: Y.Doc;
     supabase: SupabaseClient;
@@ -129,7 +131,7 @@ export class SupabaseProvider {
                 // console.log('[Yjs] Handling Update');
                 syncProtocol.readUpdate(decoder, this.doc);
                 break;
-            case syncProtocol.messageAwareness:
+            case messageAwareness:
                 // console.log('[Yjs] Handling Awareness');
                 awarenessProtocol.applyAwarenessUpdate(this.awareness, decoding.readVarUint8Array(decoder), this);
                 break;
@@ -151,7 +153,7 @@ export class SupabaseProvider {
 
         const changedClients = added.concat(updated).concat(removed);
         const encoder = encoding.createEncoder();
-        encoding.writeVarUint(encoder, syncProtocol.messageAwareness);
+        encoding.writeVarUint(encoder, messageAwareness);
         encoding.writeVarUint8Array(
             encoder,
             awarenessProtocol.encodeAwarenessUpdate(this.awareness, changedClients)
