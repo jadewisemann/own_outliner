@@ -85,7 +85,7 @@ Dynalist와 Workflowy에서 영감을 받아, 마우스 없이 키보드만으�
     - 포커스를 다음 노드로 이전시킬것
 - [x] 제목에 올라가면 다시 못내려옴 
 - [x] undo/redo
-- [ ] 인라인 포매팅 (md-like)
+- [x] 인라인 포매팅 (md-like)
 - [ ] internal link
     - [[uuid || 문서이름]]
     - ((node's uuid))
@@ -95,6 +95,9 @@ Dynalist와 Workflowy에서 영감을 받아, 마우스 없이 키보드만으�
 - [ ] logical indentation
 - [ ] 노드 이동 알고리즘 수정
 - [ ] 메모 추가
+- [ ] 노드내 개행
+- [ ] 노드에 긴줄 쓰기
+
 - [ ] 브래드 크럼블
 - [ ] 파일 구조 고민 (later)
     - [ ] 메모 추가하거나 하면 일반적인 md로는 커버가 안됨
@@ -102,9 +105,9 @@ Dynalist와 Workflowy에서 영감을 받아, 마우스 없이 키보드만으�
         - [ ] 문서 링크이되 바로 보이는 구조?
 - [ ] 도큐먼트 확장 추가
     - [ ] 모든 도큐먼트가 저장되는 폴더 존재
-- [ ] inline link 추가
-    - [ ] inline document 링크
-    - [ ] inline node 링크
+- [ ] 코드 블록
+    - [ ] 인라인 코드 블록
+
 - [ ] daily journal 기능 추가
     -  side bar에 색셔닝
 - [ ] ---나 ~~~로 vertical line 추가

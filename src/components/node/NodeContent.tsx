@@ -7,6 +7,7 @@ import { useNodeKeys } from '@/hooks/node/useNodeKeys';
 // Components
 import { Check, Terminal } from 'lucide-react';
 import { NodeBacklinksIndicator } from './NodeBacklinksIndicator';
+import { NodeMarkdown } from './NodeMarkdown';
 
 // We'll use a simplified ContentInput for now, but configured with types
 interface NodeContentProps {
@@ -22,6 +23,7 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id }) => {
         setFocus,
         deselectAll,
         updateContent,
+        updateType,
         toggleComplete,
         setSlashMenu,
 
@@ -116,45 +118,73 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id }) => {
                 <div className="absolute left-0 top-2 -ml-2 w-1 h-full bg-slate-300 rounded-full" />
             )}
 
-            <input
-                ref={inputRef}
-                type="text"
-                value={node.content || ''}
-                onChange={(e) => {
-                    const val = e.target.value;
-                    updateContent(id, val);
+            {/* Content Area: Hybrid Mode */}
+            {isFocused ? (
+                <input
+                    ref={inputRef}
+                    type="text"
+                    value={node.content || ''}
+                    onChange={(e) => {
+                        const val = e.target.value;
 
-                    // Slash Menu Trigger Logic
-                    if (val.startsWith('/')) {
-                        // Extract text after '/'
-                        const filterText = val.slice(1);
-                        const rect = e.target.getBoundingClientRect();
-                        setSlashMenu({
-                            isOpen: true,
-                            position: { x: rect.left, y: rect.bottom },
-                            targetNodeId: id,
-                            filterText
-                        });
-                    } else {
-                        // Close if it was open (we assume if we are editing and it doesn't start with /, we close it)
-                        // Actually, we should check if it IS open to avoid unnecessary updates?
-                        // Store update is cheap enough.
-                        // But wait, if I just type "Hello", I shouldn't be calling setSlashMenu(false) on every keystroke if it's already false.
-                        // We don't have access to 'slashMenu.isOpen' here easily without subscribing.
-                        // Let's just call it, Zustand will dedup if primitive? No, it's an object setter.
-                        // Optimization: Check via useNodeLogic if exposed? 
-                        // For now, let's just send isOpen: false if it doesn't start with /.
-                        // Actually, we can just do nothing if it doesn't start with /? 
-                        // No, if I backspace and remove /, it should close.
-                        setSlashMenu({ isOpen: false, position: null, targetNodeId: null });
-                    }
-                }}
-                onKeyDown={handleKeyDown}
-                onPaste={handlePaste}
-                placeholder={node.type === 'text' ? "Type '/' for commands" : "Heading"}
-                className={`w-full bg-transparent outline-none transition-all ${getStyles()}`}
-                autoComplete="off"
-            />
+                        // Auto-Heading Conversion Logic
+                        // # Space -> H1, ## Space -> H2, ### Space -> H3
+                        if (val === '# ' && node.type !== 'h1') {
+                            updateType(id, 'h1');
+                            updateContent(id, ''); // Remove the #
+                            return; // Stop processing
+                        }
+                        if (val === '## ' && node.type !== 'h2') {
+                            updateType(id, 'h2');
+                            updateContent(id, '');
+                            return;
+                        }
+                        if (val === '### ' && node.type !== 'h3') {
+                            updateType(id, 'h3');
+                            updateContent(id, '');
+                            return;
+                        }
+
+                        updateContent(id, val);
+
+                        // Slash Menu Trigger Logic
+                        if (val.startsWith('/')) {
+                            // Extract text after '/'
+                            const filterText = val.slice(1);
+                            const rect = e.target.getBoundingClientRect();
+                            setSlashMenu({
+                                isOpen: true,
+                                position: { x: rect.left, y: rect.bottom },
+                                targetNodeId: id,
+                                filterText
+                            });
+                        } else {
+                            setSlashMenu({ isOpen: false, position: null, targetNodeId: null });
+                        }
+                    }}
+                    onKeyDown={handleKeyDown}
+                    onPaste={handlePaste}
+                    placeholder={node.type === 'text' ? "Type '/' for commands" : "Heading"}
+                    className={`w-full bg-transparent outline-none transition-all ${getStyles()}`}
+                    autoComplete="off"
+                    autoFocus // Ensure focus when switched
+                />
+            ) : (
+                <div
+                    className={`w-full min-h-[1.5rem] cursor-text ${getStyles()}`}
+                    onClick={(e) => {
+                        // If clicking a link, don't focus? 
+                        // NodeMarkdown links have stopPropagation.
+                        // So clicking here means clicking empty space or text.
+                        e.stopPropagation();
+                        // setFocus might need timeout if we are unmounting preview?
+                        // No, setFocus triggers re-render with isFocused=true.
+                        setFocus(id);
+                    }}
+                >
+                    <NodeMarkdown content={node.content} />
+                </div>
+            )}
 
             {/* Indicators */}
             <NodeBacklinksIndicator id={id} />
