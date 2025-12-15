@@ -20,27 +20,28 @@ export const useNodeKeys = (
     const { handleEditMode } = useEditKeys(id, node, keys, inputRef, updateContent);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        // Refresh state for common actions
+        // Refresh state
         const currentState = useOutlinerStore.getState();
         const currentKeys = currentState.settings.keybindings;
 
         if (currentState.slashMenu.isOpen) {
-            // Let the SlashMenu handle navigation via its window listener.
-            // But we must block internal handlers (moveNode, etc) from firing.
-            // ArrowUp/Down/Enter are the main ones managed by SlashMenu.
+            if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) return;
+        }
 
-            // However, useNodeKeys's handleKeyDown logic processes "moveNode" (Alt+Arrow) and "moveFocus" (Arrow).
-            // We should block plain arrows. 
-            // Alt+Arrows might be fine? No, usually menu navigation takes precedence.
+        // 1. Ctrl+Enter (or Cmd+Enter) -> Insert Node Below
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
 
-            // SlashMenu uses: ArrowUp, ArrowDown, Enter, Escape.
-            if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) {
-                return; // Do nothing, let global listener handle (or let it bubble)
-                // Actually, SlashMenu uses capture phase window listener.
-                // The issue was: useNodeKeys ALSO runs.
-                // If we return here, we skip 'handleCommonActions' and 'handleFocusNavigation'.
-                // So the editor WON'T move focus. Correct.
+            const currentNode = currentState.nodes[id];
+            if (currentNode && currentNode.parentId) {
+                const parent = currentState.nodes[currentNode.parentId];
+                const index = parent?.children.indexOf(id);
+                if (index !== undefined && index !== -1) {
+                    currentState.addNode(currentNode.parentId, index + 1);
+                }
             }
+            return;
         }
 
         if (handleCommonActions(e, currentKeys, currentState, id)) return;
