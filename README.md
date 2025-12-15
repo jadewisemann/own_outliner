@@ -49,91 +49,104 @@ Dynalist와 Workflowy에서 영감을 받아, 마우스 없이 키보드만으�
 
 ## 개발 로드맵 (Development Roadmap)
 
-### Phase 1: 핵심 엔진 (완료)
-- [x] 프로젝트 초기 설정 (Vite + React + TS + Tailwind v4)
-- [x] 데이터 아키텍처 설계 (Flat Dictionary 구조: O(1) 성능)
-- [x] 기본 조작 구현 (Add, Delete, Indent, Outdent)
-- [x] 데이터 영속성 (LocalStorage)
+### I: core & MVC
 
-### Phase 2: 고급 상호작용 (완료)
-- [x] 순서 변경 (Alt + Up/Down): 즉각적인 형제 노드 교체 로직.
-- [x] 지능형 선택 (Ctrl + A): 단계별 선택 로직 구현.
-- [x] 줌 인/아웃 (Hoisting): 화면 렌더링 루트를 동적으로 변경하는 기능.
-- [x] 스마트 붙여넣기 (Smart Paste): 텍스트 붙여넣기 시 들여쓰기 구조 자동 인식 (완료).
-- [x] 논리적 노드 복사/붙여넣기: Ctrl+A로 선택된 노드 자체를 구조적으로 복사/이동.
+- Core & Performance
+    - [x] 프로젝트 초기 설정 (Vite + React + TS + Tailwind v4)
+    - [x] 데이터 아키텍처 (Flat Dictionary 구조: O(1) 성능)
+    - [x] 가상화 (Virtualization): `react-virtuoso` 도입 및 최적화
+    - [x] 데이터 영속성 (LocalStorage) 및 Yjs 도입
+    - [x] 실행 취소/다시 실행 (Undo/Redo): `zundo` 기반 상태 관리
 
-### Phase 3: UX 고도화 (Polish)
-- [x] 다중 선택: Shift + Arrow로 여러 줄 선택.
-- [x] 다중 삭제: Backspace/Delete로 선택된 노드 일괄 삭제.
-- [x] 실행 취소/다시 실행 (Undo/Redo): zundo를 활용한 데이터 및 포커스 상태 복구.
-- [x] 검색 (Search): Cmd + P로 전역 검색 및 빠른 이동.
-- [ ] 드래그 앤 드롭: 마우스를 이용한 직관적인 이동.
-- [ ] 애니메이션: 부드러운 이동 트랜지션.
+- Basic Editing
+    - [x] 기본 조작 (Add, Delete, Indent, Outdent, Reorder)
+    - [x] 지능형 선택 (Smart Selection, Ctrl+A)
+    - [x] 논리적 노드/텍스트 복사 & 붙여넣기 (스마트 인덴트 감지)
+    - [x] 인라인 포매팅 (Markdown 스타일)
 
-### Phase 4: 확장성 (Scalability)
-- [x] 가상화 (Virtualization): react-virtuoso를 도입하여 대용량 노드 렌더링 성능 최적화.
-- [ ] OPML 내보내기/가져오기: 백업 및 다른 아웃라이너와의 호환성.
+- UX Polish
+    - [x] 줌 인/아웃 (Hoisting)
+    - [x] 다중 선택 및 일괄 삭제
+    - [x] 검색 (Cmd + P)
+    - [x] 슬래시(/) 포커스
 
-### Phase 5: 확장성 (Scalability)
-- [ ] OPML 내보내기/가져오기: 백업 및 다른 아웃라이너와의 호환성.
 
-### FIX
-- [x] break line login
-    - node의 맨앞에서는 현재 노드의 위에 생겨야 함
-- [x] 슬래쉬 (/)가 생겼을 때 포커스 깨짐
-- [x] 최상단의 라인이 지워지면 커서가 포커스를 잃어버림
-    - 포커스를 다음 노드로 이전시킬것
-- [x] 제목에 올라가면 다시 못내려옴 
-- [x] undo/redo
-- [x] 인라인 포매팅 (md-like)
-- [ ] internal link
-    - [[uuid || 문서이름]]
-    - ((node's uuid))
-    - 위로 그냥 다른 문법으로 쓰고 랜더링만 덮어씌우는게 좋을지도
+### **I.5**: core refine
+    - [ ] internal link refactoring
+        - [x] add alias
+        - [x] add node link
+        - [ ] add backlink
 
-### INHANCE
-- [ ] SSO 브라우저에서 진행하게 하기
-- [ ] 단축키 개선
-    - [ ] ctrl + enter는 새로운 노드 삽입
 
-### TODO
-- [ ] logical indentation
-- [ ] 노드 이동 알고리즘 수정
-- [ ] 메모 추가
-- [ ] 노드내 개행
-- [ ] 노드에 긴줄 쓰기
+### **II**: core improvement and add feature
 
-- [ ] 브래드 크럼블
-- [ ] 파일 구조 고민 (later)
-    - [ ] 메모 추가하거나 하면 일반적인 md로는 커버가 안됨
-    - [ ] 이것도 문서 링크로 처리를 해야 할까?
-        - [ ] 문서 링크이되 바로 보이는 구조?
-- [ ] 도큐먼트 확장 추가
-    - [ ] 모든 도큐먼트가 저장되는 폴더 존재
-- [ ] 코드 블록
-    - [ ] 인라인 코드 블록
+- refine Logic
+    - [ ] Logical Indentation
+        - [ ] option으로 분기 처리
+    - [ ] 노드 이동 알고리즘 개선: 드래그/단축키 이동 시 부모-자식 재계산 로직 강화
 
-- [ ] daily journal 기능 추가
-    -  side bar에 색셔닝
-- [ ] ---나 ~~~로 vertical line 추가
-- [ ] 직전에 열렸던 문서에서 시작하기 옵션
-    - [ ] home 설정 기능
-    - 직전 문서에서 열지 home에서 시작할지 고를 수 있음
-- [ ] 외형 설정
-    - 폰트, 강조 색, 배경 색, 폭 등
-    - 디자인 요소 추출 후 ai studio에 프롬프팅해서 추출
-    - vsc 태마 importer
-    - 터미널 12색 importer
-- [ ] 내장 theme
-- [ ] 외부 CSS 사이드로드
-- [ ] 멀티 플랫폼 확장:
-    - [ ] Tauri: Rust 백엔드를 활용한 초경량 네이티브 데스크탑 및 모바일 앱 (Android/iOS 지원).
-        - [ ] React Native: Tauri의 android, ios  DX가 끔찍하다는 커뮤니티 의견이 있음
-    - [ ] WebAssembly: 브라우저에서 실행 가능한 WebAssembly를 활용한 모바일 앱.
-    - [ ] PWA: 모바일 설치 지원.
-- [ ] collaborate 편집 기능 (Real-time): Yjs 등을 활용한 동시 편집 
-    - [x] yjs 도입
-    - [ ] github로 연동하기 
+- 기능 고도화
+    - [ ] 노드 내 개행(Soft break)
+    - [ ] $nodelink (search) 다른 파일내 노드 검색 기능 추가
 
-### TODO / MISC
-- [ ] favicon 변경
+- 노드 종류 추가
+    - [ ] $code-block
+        - [ ] 코드 블록
+        - [ ] 인라인 코드 블록
+        - [ ] 코드 블록 syntax highlight
+    - [ ] $tag
+        - [ ] 태그
+        - [ ] 태그 검색
+    - [ ] $todo
+        - [ ] 체크박스
+        - [ ] 체크박스 검색
+    - [ ] $memo
+
+- 기능 추가
+    - [ ] $inliternal-link (link search) prefix 추가 또는 폴더 탐색
+    - [ ] $quick-changer 
+    - [ ] $breadcrumb (줌인)
+    - [ ] 로컬 저장(md로 저장) 
+    - [ ] $daily
+        - [ ] 일일 저널
+        - [ ] 일일 저널 검색
+
+
+### **III**: UI/UX 확장 및 추가 기능
+- 추가 노드
+    - [ ] $paragraph
+    - [ ] $quote
+    - [ ] $horizontal-divider
+    - [ ] $date
+        - [ ] 날짜
+        - [ ] 날짜 검색
+    - [ ] $time
+    - [ ] $calendar
+
+
+- 애니메이션
+    - [ ] 이동 트랜지션
+    - [ ] 커서 애니메이션
+
+- Customization
+    - [ ] 테마 시스템
+        - [ ] VS Code 테마 임포터
+        - [ ] 터미널, 12색 테마 컨버터
+    - [ ] 외형 설정 세팅
+        - [ ] 폰트/색상 커스텀 설정
+        - [ ] 에디터 폭, 배경색, 사이드바 설정
+    - [ ] 시작 옵션: 홈 화면 vs 마지막 문서 열기
+
+### IV: 생태계 및 멀티 플랫폼
+
+- Platform
+    - [ ] Tauri 모바일: Rust 백엔드 기반 Android/iOS 앱 빌드
+    - [ ] PWA / WebAssembly: 웹 기반 구동 환경
+
+- Sync & Data
+    - [ ] 협업/동기화
+        - [ ] GitHub 연동
+            - github을 저장소로 이용
+            - 자동 커밋 및 푸쉬, 풀
+        - [ ] Yjs 기반 실시간 협업
+    - [ ] SSO를 외부 브라우저에서 하게 하기
