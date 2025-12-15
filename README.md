@@ -91,6 +91,11 @@ Dynalist와 Workflowy에서 영감을 받아, 마우스 없이 키보드만으�
     - ((node's uuid))
     - 위로 그냥 다른 문법으로 쓰고 랜더링만 덮어씌우는게 좋을지도
 
+### INHANCE
+- [ ] SSO 브라우저에서 진행하게 하기
+- [ ] 단축키 개선
+    - [ ] ctrl + enter는 새로운 노드 삽입
+
 ### TODO
 - [ ] logical indentation
 - [ ] 노드 이동 알고리즘 수정
