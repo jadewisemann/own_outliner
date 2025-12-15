@@ -10,7 +10,7 @@ export interface NodeSlice {
     rootNodeId: NodeId;
     hoistedNodeId: NodeId | null;
 
-    addNode: (parentId: NodeId | null, index?: number) => void;
+    addNode: (parentId: NodeId | null, index?: number, shouldFocus?: boolean) => void;
     deleteNode: (id: NodeId) => void;
     deleteNodes: (ids: NodeId[]) => void;
     updateContent: (id: NodeId, content: string) => void;
@@ -47,7 +47,7 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
 
     setHoistedNode: (id) => set({ hoistedNodeId: id }),
 
-    addNode: (parentId, index) => {
+    addNode: (parentId, index, shouldFocus = true) => {
         const { doc, rootNodeId } = get();
         if (!doc) return;
 
@@ -108,8 +108,10 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
             safeParent.set('updatedAt', Date.now());
         });
 
-        // Optimistic / Focus update
-        set({ focusedId: newId, focusCursorPos: 0 });
+        // Optimistic / Focus update: Only if requested
+        if (shouldFocus) {
+            set({ focusedId: newId, focusCursorPos: 0 });
+        }
     },
 
     // I need to implement each action carefully. 
@@ -132,11 +134,8 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
         const index = arr.indexOf(siblingId);
 
         if (index !== -1) {
-            addNode(parentId, index); // Insert at current index -> New Node appears BEFORE sibling.
-            // addNode sets focus to new node.
-            // We want to restore focus to siblingId.
-            // Since everything is synchronous (Yjs + Zustand set), we can just set it back immediately.
-            set({ focusedId: siblingId });
+            addNode(parentId, index, false);
+            set({ focusedId: siblingId, focusCursorPos: 0 });
         }
     },
 
@@ -211,11 +210,11 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
                         // Users usually expect focus to stay in the list editing area if possible,
                         // but if empty, focusing the header (hoisted node) is a safe fallback.
                         else if (parentId === hoistedNodeId) {
-                             nextFocusId = hoistedNodeId;
-                             // Focus at end of header content?
-                             const hNode = yNodes.get(hoistedNodeId) as Y.Map<any>;
-                             const hContent = (hNode?.get('content') as string) || '';
-                             nextCursorPos = hContent.length;
+                            nextFocusId = hoistedNodeId;
+                            // Focus at end of header content?
+                            const hNode = yNodes.get(hoistedNodeId) as Y.Map<any>;
+                            const hContent = (hNode?.get('content') as string) || '';
+                            nextCursorPos = hContent.length;
                         }
                     }
                 }
@@ -501,7 +500,7 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
             }
         });
 
-        set({ focusedId: newId });
+        set({ focusedId: newId, focusCursorPos: 0 });
     },
 
     mergeNode: (id) => {

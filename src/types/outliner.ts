@@ -111,7 +111,7 @@ export interface OutlinerState {
     setSlashMenu: (state: { isOpen: boolean; position: { x: number, y: number } | null; targetNodeId: NodeId | null; filterText?: string }) => void;
 
     // Actions
-    addNode: (parentId: NodeId | null, index?: number) => void;
+    addNode: (parentId: NodeId | null, index?: number, shouldFocus?: boolean) => void;
     addNodeBefore: (siblingId: NodeId) => void;
     deleteNode: (id: NodeId) => void;
     updateContent: (id: NodeId, content: string) => void;
