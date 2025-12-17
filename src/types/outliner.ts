@@ -139,6 +139,7 @@ export interface OutlinerState {
     undoManager?: any; // Y.UndoManager
     undo: () => void;
     redo: () => void;
+    forceSync: () => Promise<void>;
     initializeSync: () => Promise<void>;
     // Auth
     user: any | null; // Placeholder, better if imported from AuthSlice
