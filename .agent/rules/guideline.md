@@ -98,6 +98,8 @@ trigger: always_on
 1.  **Start:** `origin` Fetch 및 Base 브랜치 최신화.
 2.  **Work:** `feat/issue-...` 브랜치 생성 및 작업.
 3.  **PR:** Base 브랜치로 PR 생성 (Title: `TYPE(scope): Title`).
+3.1. pr 내용은 아주 상세하게 적을것. 실제 변경된 코드의 내용이나 아키텍쳐의 내용이 보여도 좋음.
+3.2. 존댓말을 사용하지 말것.
 4.  **Merge:** Squash Merge 권장.
 
 ---
