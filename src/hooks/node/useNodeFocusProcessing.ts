@@ -20,25 +20,23 @@ export const useNodeFocusProcessing = (
         }
       } else {
         // Edit mode (input focus)
-        if (document.activeElement !== inputRef.current && inputRef.current) {
-          inputRef.current.focus();
-
-          const len = inputRef.current.value.length;
-          let newPos = len;
-
-          if (focusCursorPos !== null) {
-            newPos = focusCursorPos;
+        if (inputRef.current) {
+          if (document.activeElement !== inputRef.current) {
+            inputRef.current.focus();
           }
 
-          if (newPos < 0) newPos = 0;
-          if (newPos > len) newPos = len;
+          if (focusCursorPos !== null) {
+            const len = inputRef.current.value.length;
+            let newPos = focusCursorPos;
 
-          // Defer selection set slightly to ensure focus has taken effect
-          // requestAnimationFrame could be better, but direct call usually works if focused.
-          try {
-            inputRef.current.setSelectionRange(newPos, newPos);
-          } catch (e) {
-            // ignore error if input not ready
+            if (newPos < 0) newPos = 0;
+            if (newPos > len) newPos = len;
+
+            try {
+              inputRef.current.setSelectionRange(newPos, newPos);
+            } catch (e) {
+              // ignore
+            }
           }
         }
       }
