@@ -283,6 +283,11 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id }) => {
                             }
                         }
 
+                        // Prevent duplicate brackets if user is editing inside existing link (e.g. [[Doc|]])
+                        if (after.startsWith(']]')) {
+                            insertion = insertion.slice(0, -2);
+                        }
+
                         const newValue = before + insertion + after;
                         updateContent(id, newValue);
 
