@@ -34,15 +34,19 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id }) => {
     const [linkPopup, setLinkPopup] = useState<{
         isOpen: boolean;
         type: 'node' | 'document';
+        targetDocTitle?: string | null;
         position: { top: number; left: number };
         query: string;
         triggerIndex: number;
+        triggerLength: number; // Added to track full length of [[... text to replace
     }>({
         isOpen: false,
         type: 'node',
+        targetDocTitle: null,
         position: { top: 0, left: 0 },
         query: '',
-        triggerIndex: -1
+        triggerIndex: -1,
+        triggerLength: 0
     });
 
     const inputRef = useRef<HTMLInputElement>(null);
@@ -179,54 +183,54 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id }) => {
                             setSlashMenu({ isOpen: false, position: null, targetNodeId: null });
                         }
 
-                        // 2. Internal Link Trigger ([[ or (())
-                        // Match last occurrence of [[ or ((
-                        // Regex: /\[\[([^\]]*)$/ or /\(\(([^\)]*)$/
-                        // Actually easier to match generic trigger chars
+                        // 2. Internal Link Trigger ([[ only for unified syntax)
+                        // Match last occurrence of [[
+                        // Regex: /\[\[([^\]]*)$/
+
                         const selectionStart = e.target.selectionStart || 0;
                         const textBeforeCursor = val.slice(0, selectionStart);
 
-                        // Check for [[
-                        const docMatch = textBeforeCursor.match(/\[\[([^\]]*)$/);
-                        if (docMatch) {
-                            const query = docMatch[1];
-                            const rect = e.target.getBoundingClientRect();
-                            // Approximate left pos: rect.left + measureText(beforeMatch)?
-                            // For MVP, stick to rect.left + offset or similar. 
-                            // Better: rect.left + (docMatch.index * ch_width)
-                            const chWidth = 7.5; // Approx for default font
-                            const leftOffset = (docMatch.index || 0) * chWidth;
+                        const linkMatch = textBeforeCursor.match(/\[\[([^\]]*)$/);
 
-                            setLinkPopup({
-                                isOpen: true,
-                                type: 'document',
-                                position: { top: rect.bottom, left: rect.left + leftOffset },
-                                query,
-                                triggerIndex: docMatch.index!
-                            });
-                            return;
-                        }
-
-                        // Check for ((
-                        const nodeMatch = textBeforeCursor.match(/\(\(([^\)]*)$/);
-                        if (nodeMatch) {
-                            const query = nodeMatch[1];
+                        if (linkMatch) {
+                            const rawQuery = linkMatch[1];
                             const rect = e.target.getBoundingClientRect();
                             const chWidth = 7.5;
-                            const leftOffset = (nodeMatch.index || 0) * chWidth;
+                            const leftOffset = (linkMatch.index || 0) * chWidth;
+
+                            let type: 'document' | 'node' = 'document';
+                            let query = rawQuery;
+                            let targetDocTitle: string | null = null;
+
+                            // 1. Local Block Search: [[^query
+                            if (rawQuery.startsWith('^')) {
+                                type = 'node';
+                                query = rawQuery.slice(1);
+                            }
+                            // 2. Remote Block Search: [[DocTitle^query
+                            else if (rawQuery.includes('^')) {
+                                const [docPartial, blockQuery] = rawQuery.split('^');
+                                // Check if docPartial matches a known document title exactly? 
+                                // Or we assume user selected a doc and typed ^.
+                                // Logic: If user types [[Doc^, we treat Doc as target.
+                                // But `rawQuery` is everything after [[.
+                                if (docPartial) {
+                                    type = 'node'; // We want to search nodes
+                                    targetDocTitle = docPartial;
+                                    query = blockQuery || '';
+                                }
+                            }
 
                             setLinkPopup({
                                 isOpen: true,
-                                type: 'node',
-                                position: { top: rect.bottom, left: rect.left + leftOffset },
+                                type,
+                                targetDocTitle,
+                                position: { top: rect.bottom + 5, left: rect.left + leftOffset },
                                 query,
-                                triggerIndex: nodeMatch.index!
+                                triggerIndex: (linkMatch.index || 0),
+                                triggerLength: 2 + rawQuery.length // [[ + query length
                             });
-                            return;
-                        }
-
-                        // If no match, close popup
-                        if (linkPopup.isOpen) {
+                        } else {
                             setLinkPopup(prev => ({ ...prev, isOpen: false }));
                         }
                     }}
@@ -253,27 +257,36 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id }) => {
             {linkPopup.isOpen && (
                 <InlineSearchPopup
                     mode={linkPopup.type}
+                    targetDocTitle={linkPopup.targetDocTitle} // Pass Prop
                     query={linkPopup.query}
                     position={linkPopup.position}
                     onSelect={(selectedId, selectedContent) => {
                         const value = node.content;
                         const triggerIdx = linkPopup.triggerIndex;
                         const before = value.substring(0, triggerIdx);
-
-                        const queryLen = linkPopup.query.length;
-                        const after = value.substring(triggerIdx + 2 + queryLen);
+                        // triggerLength includes [[ + rawQuery so we replace everything user typed
+                        const after = value.substring(triggerIdx + linkPopup.triggerLength);
 
                         let insertion = '';
                         if (linkPopup.type === 'document') {
                             insertion = `[[${selectedContent}]]`;
                         } else {
-                            insertion = `((${selectedId}))`;
+                            // Node Mode
+                            // If Local: [[^id]]
+                            // If Remote: [[Doc^id]]
+
+                            // Check if we have a target doc
+                            if (linkPopup.targetDocTitle) {
+                                insertion = `[[${linkPopup.targetDocTitle}^${selectedId}]]`;
+                            } else {
+                                insertion = `[[^${selectedId}]]`;
+                            }
                         }
 
                         const newValue = before + insertion + after;
                         updateContent(id, newValue);
 
-                        setLinkPopup({ isOpen: false, type: 'node', position: { top: 0, left: 0 }, query: '', triggerIndex: -1 });
+                        setLinkPopup({ isOpen: false, type: 'node', position: { top: 0, left: 0 }, query: '', triggerIndex: -1, triggerLength: 0 });
 
                         requestAnimationFrame(() => {
                             if (inputRef.current) {
@@ -283,7 +296,7 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id }) => {
                             }
                         });
                     }}
-                    onClose={() => setLinkPopup({ isOpen: false, type: 'node', position: { top: 0, left: 0 }, query: '', triggerIndex: -1 })}
+                    onClose={() => setLinkPopup({ isOpen: false, type: 'node', position: { top: 0, left: 0 }, query: '', triggerIndex: -1, triggerLength: 0 })}
                 />
             )}
 

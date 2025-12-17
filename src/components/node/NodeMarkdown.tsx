@@ -66,8 +66,54 @@ export const NodeMarkdown: React.FC<NodeMarkdownProps> = ({ content }) => {
                 }
 
                 if (part.startsWith('[[') && part.endsWith(']]')) {
-                    // It's a wiki link: [[Title]] or [[Title|Alias]]
+                    // It's a wiki link: [[Title]], [[Title|Alias]], [[^BlockID]], [[Title^BlockID]]
                     const rawContent = part.slice(2, -2);
+
+                    // Check for Block Link (contains ^)
+                    if (rawContent.includes('^')) {
+                        const [targetDocTitle, blockId] = rawContent.split('^');
+
+                        // Case: [[^id]] (Local)
+                        if (targetDocTitle === '') {
+                            return <NodeReference key={index} nodeId={blockId} />;
+                        }
+
+                        // Case: [[Title^id]] (Remote)
+                        // Verify target doc exists
+                        const targetDoc = resolveDocument(targetDocTitle, documents);
+                        if (targetDoc) {
+                            // Render as Remote Node Reference
+                            // TODO: NodeReference needs to learn how to fetch/display *remote* nodes?
+                            // Currently NodeReference takes 'nodeId'. 
+                            // If it relies on 'useNodeLogic', it checks 'store.nodes'.
+                            // If remote node is not in store, it will fail/empty.
+                            // For now, we render a Link to the Doc, maybe with a suffix?
+                            // Or we try NodeReference (it might work if we have the node loaded).
+                            // User requirement: "Display it correctly". 
+                            // If it breaks, use fallback text.
+                            return (
+                                <span key={index} className="inline-flex items-baseline gap-1">
+                                    <span
+                                        className="text-blue-600 hover:underline cursor-pointer font-medium text-xs"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setActiveDocument(targetDoc.id);
+                                            // We should also focus the node... passed as param?
+                                            // Store needs 'flashId' or similar.
+                                        }}
+                                    >
+                                        @{targetDocTitle}
+                                    </span>
+                                    <NodeReference nodeId={blockId} />
+                                </span>
+                            );
+                        } else {
+                            // Broken Remote Link
+                            return <span key={index} className="text-red-400 opacity-60">[[{rawContent}]]</span>;
+                        }
+                    }
+
+                    // Regular Wiki Link
                     const [linkTarget, linkAlias] = rawContent.split('|');
                     const displayText = linkAlias || linkTarget;
 
