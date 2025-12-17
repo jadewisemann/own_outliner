@@ -74,6 +74,14 @@ export interface ConflictState {
     initialName: string;
 }
 
+export interface BacklinkItem {
+    id: string;
+    sourceDocId: string;
+    sourceDocTitle: string;
+    sourceNodeId: string;
+    excerpt: string;
+}
+
 export interface OutlinerState {
     nodes: Record<NodeId, NodeData>;
     rootNodeId: NodeId;
@@ -81,7 +89,8 @@ export interface OutlinerState {
     hoistedNodeId: NodeId | null;
     focusCursorPos: number | null;
     flashId: NodeId | null;
-    backlinks: Record<NodeId, NodeId[]>; // TargetID -> SourceIDs
+    backlinks: BacklinkItem[]; // TargetID -> Source Metadata
+
 
     // Multi-document State
     documents: Document[];
@@ -147,6 +156,8 @@ export interface OutlinerState {
     isAuthLoading: boolean;
     initializeAuth: () => Promise<void>;
     signOut: () => Promise<void>;
+
+    fetchBacklinks: (docId: string) => Promise<void>;
 
     // Sync
     isSyncing: boolean;
