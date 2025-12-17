@@ -2,6 +2,7 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { NodeReference } from './NodeReference';
+import { FileText, ChevronRight } from 'lucide-react';
 
 interface NodeMarkdownProps {
     content: string;
@@ -92,9 +93,16 @@ export const NodeMarkdown: React.FC<NodeMarkdownProps> = ({ content }) => {
                             // User requirement: "Display it correctly". 
                             // If it breaks, use fallback text.
                             return (
-                                <span key={index} className="inline-flex items-baseline gap-1">
+                                <span key={index} className="inline-flex items-center gap-0.5 align-middle select-none">
                                     <span
-                                        className="text-blue-600 hover:underline cursor-pointer font-medium text-xs"
+                                        className="
+                                            inline-flex items-center gap-1
+                                            bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800
+                                            border border-gray-200 rounded-md
+                                            px-1.5 py-0.5
+                                            text-xs font-medium
+                                            cursor-pointer transition-colors
+                                        "
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             setActiveDocument(targetDoc.id);
@@ -102,8 +110,10 @@ export const NodeMarkdown: React.FC<NodeMarkdownProps> = ({ content }) => {
                                             // Store needs 'flashId' or similar.
                                         }}
                                     >
-                                        @{targetDocTitle}
+                                        <FileText className="w-3 h-3 opacity-70" />
+                                        <span className="truncate max-w-[100px]">{targetDocTitle}</span>
                                     </span>
+                                    <ChevronRight className="w-3 h-3 text-gray-400" />
                                     <NodeReference nodeId={blockId} />
                                 </span>
                             );

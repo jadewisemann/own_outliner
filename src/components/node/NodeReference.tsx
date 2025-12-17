@@ -1,4 +1,5 @@
 import React from 'react';
+import { Hash } from 'lucide-react';
 import { useOutlinerStore } from '@/store/outlinerStore';
 import type { NodeId } from '@/types/outliner';
 
@@ -42,14 +43,18 @@ export const NodeReference: React.FC<NodeReferenceProps> = ({ nodeId, children }
         <span
             onClick={handleClick}
             className="
-                text-blue-600 hover:text-blue-800 underline decoration-blue-300/50 hover:decoration-blue-800
-                cursor-pointer hover:bg-blue-50 rounded px-0.5 -mx-0.5 transition-colors
-                pointer-events-auto
+                inline-flex items-center gap-0.5
+                bg-blue-50/80 hover:bg-blue-100 text-blue-600 hover:text-blue-700
+                border border-blue-200/50 rounded-md
+                px-1.5 py-0.5 mx-0.5
+                text-xs font-medium
+                cursor-pointer transition-colors select-none
+                pointer-events-auto align-middle
             "
             title={`Link to: ${nodeContent}`}
         >
-            <span className="opacity-50 text-[10px] mr-1">@</span>
-            {finalContent}
+            <Hash className="w-3 h-3 opacity-50 stroke-[2.5px]" />
+            <span className="truncate max-w-[150px]">{finalContent}</span>
         </span>
     );
 };
