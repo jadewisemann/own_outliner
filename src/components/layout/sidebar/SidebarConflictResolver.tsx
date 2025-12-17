@@ -1,7 +1,7 @@
 import React from 'react';
 import { PromptModal } from '@/components/ui/PromptModal';
 import { useSidebarContext } from './SidebarContext';
-import { useOutlinerStore } from '@/store/outliner';
+import { useOutlinerStore } from '@/store/outlinerStore';
 
 export const SidebarConflictResolver: React.FC = () => {
     const { conflictState, setConflictState } = useSidebarContext();

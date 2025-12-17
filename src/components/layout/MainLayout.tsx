@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
-// import { useOutlinerStore } from '@/store/outliner'; 
+// import { useOutlinerStore } from '@/store/outlinerStore'; 
 import { MobileToolbar } from '../editor/MobileToolbar';
 import { ChevronRight, Search, Settings } from 'lucide-react';
 

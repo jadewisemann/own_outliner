@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useOutlinerStore } from '@/store/outliner';
+import { useOutlinerStore } from '@/store/outlinerStore';
 import type { Document, ConflictState } from '@/types/outliner';
 import { useSidebarSort } from '@/hooks/useSidebarSort';
 import { useSidebarDragAndDrop } from '@/hooks/useSidebarDragAndDrop';

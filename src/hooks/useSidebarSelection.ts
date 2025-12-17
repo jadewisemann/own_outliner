@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useOutlinerStore } from '@/store/outliner';
+import { useOutlinerStore } from '@/store/outlinerStore';
 
 export function useSidebarSelection() {
     const { activeDocumentId, setActiveDocument: storeSetActiveDocument } = useOutlinerStore();

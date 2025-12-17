@@ -1,4 +1,4 @@
-import { useOutlinerStore } from '@/store/outliner';
+import { useOutlinerStore } from '@/store/outlinerStore';
 import { isMatch, executeIfMatch } from '@/utils/keybindings';
 import type { NodeId, NodeData } from '@/types/outliner';
 import type { RefObject } from 'react';

@@ -3,18 +3,22 @@ import { persist } from 'zustand/middleware';
 import * as Y from 'yjs';
 import { SupabaseProvider } from '@/lib/yjs-provider';
 import { supabase } from '@/lib/supabase';
+import { parseLinks } from '@/utils/linkParsing';
 
 import type { OutlinerState, NodeData } from '@/types/outliner';
-import { createNodeSlice } from '@/store/slices/nodeSlice';
-import { createSelectionSlice } from '@/store/slices/selectionSlice';
-import { createFocusSlice } from '@/store/slices/focusSlice';
-import { createSettingsSlice } from '@/store/slices/settingsSlice';
-import { createNavigationSlice } from '@/store/slices/navigationSlice';
-// import { v4 as uuidv4 } from 'uuid'; // Removed: DB generates UUIDs
+import {
+    createNodeSlice,
+    createSelectionSlice,
+    createFocusSlice,
+    createSettingsSlice,
+    createNavigationSlice,
+    createAuthSlice,
+    createSyncSlice
+} from '@/store/slices';
 
-import { createAuthSlice } from '@/store/slices/authSlice';
-import { createSyncSlice } from '@/store/slices/syncSlice';
 
+// Module-level timer to ensure singleton debounce across document switches
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const useOutlinerStore = create<OutlinerState>()(
     persist(
@@ -405,27 +409,11 @@ export const useOutlinerStore = create<OutlinerState>()(
                     set({ provider });
 
                     // 5. Persistence Listener (Debounced)
-                    let timer: ReturnType<typeof setTimeout> | null = null;
+                    // Note: saveTimer is module-level singleton
                     newDoc.on('update', () => {
-                        if (timer) clearTimeout(timer);
-                        timer = setTimeout(() => {
-                            const fullState = Y.encodeStateAsUpdate(newDoc);
-                            // Convert to Hex String for Postgres bytea
-                            const hexContent = '\\x' + Array.from(fullState)
-                                .map(b => b.toString(16).padStart(2, '0'))
-                                .join('');
-
-                            supabase
-                                .from('documents')
-                                .update({
-                                    content: hexContent as any, // Supabase expects string for bytea usually
-                                    updated_at: new Date().toISOString()
-                                })
-                                .eq('id', id)
-                                .then(({ error }) => {
-                                    if (error) console.error("Persistence Error", error);
-                                    else console.log("Document saved to DB");
-                                });
+                        if (saveTimer) clearTimeout(saveTimer);
+                        saveTimer = setTimeout(() => {
+                            get().forceSync(); // Call the new forceSync method
                         }, 2000);
                     });
 
@@ -487,11 +475,81 @@ export const useOutlinerStore = create<OutlinerState>()(
 
                 initializeSync: async () => {
                     // Deprecated: use setActiveDocument. 
-                    // But we keep it as a no-op or proxy if referenced.
                     const state = get();
                     if (state.activeDocumentId && !state.provider) {
                         state.setActiveDocument(state.activeDocumentId);
                     }
+                },
+
+                forceSync: async () => {
+                    const state = get();
+                    const { activeDocumentId, doc } = state;
+                    if (!activeDocumentId || !doc) return;
+
+                    // Clear any pending debounce timer
+                    if (saveTimer) {
+                        clearTimeout(saveTimer);
+                        saveTimer = null;
+                    }
+
+                    console.log("Force Syncing:", activeDocumentId);
+
+                    const fullState = Y.encodeStateAsUpdate(doc);
+                    const hexContent = '\\x' + Array.from(fullState)
+                        .map(b => b.toString(16).padStart(2, '0'))
+                        .join('');
+
+                    // JSON Export for Search/Export/Diffing
+                    const currentNodes = state.nodes;
+                    const jsonContent = currentNodes; // Save raw nodes map as JSON
+
+                    // 1. Dual Save: Content (Binary) + ContentJSON (Text)
+                    const savePromise = supabase
+                        .from('documents')
+                        .update({
+                            content: hexContent as any,
+                            content_json: jsonContent as any, // Dual Storage
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', activeDocumentId);
+
+                    // 2. Extract Links & Diffing
+                    const foundLinks = new Set<string>();
+
+                    Object.values(currentNodes).forEach(node => {
+                        const parsed = parseLinks(node.content);
+                        parsed.forEach(link => {
+                            if (link.type === 'wiki') {
+                                const targetTitle = link.target;
+                                const targetDoc = state.documents.find(d => d.title === targetTitle);
+                                if (targetDoc) {
+                                    foundLinks.add(targetDoc.id);
+                                }
+                            }
+                        });
+                    });
+
+                    console.log("Force Saving doc:", activeDocumentId, "Links:", Array.from(foundLinks));
+
+                    // 3. Sync References (Always replace for correctness, relying on 2s debounce for performance)
+                    const { error: deleteError } = await supabase
+                        .from('document_references')
+                        .delete()
+                        .eq('source_document_id', activeDocumentId);
+
+                    if (!deleteError && foundLinks.size > 0) {
+                        const refsToInsert = Array.from(foundLinks).map(targetId => ({
+                            source_document_id: activeDocumentId,
+                            target_document_id: targetId,
+                        }));
+
+                        await supabase
+                            .from('document_references')
+                            .insert(refsToInsert);
+                    }
+
+                    await savePromise;
+                    console.log("Force Sync Complete");
                 }
             };
         },
