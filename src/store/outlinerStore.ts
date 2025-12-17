@@ -402,11 +402,21 @@ export const useOutlinerStore = create<OutlinerState>()(
                         nodes: {},
                         doc: newDoc,
                         provider: undefined,
-                        undoManager
+                        undoManager,
+                        backlinks: [] // Clear previous references to avoid stale data
                     });
 
-                    // Fetch backlinks for this document
-                    get().fetchBacklinks(id);
+                    // Defer fetching backlinks until the browser is idle to prioritize rendering
+                    if (typeof requestIdleCallback !== 'undefined') {
+                        requestIdleCallback(() => {
+                            get().fetchBacklinks(id);
+                        });
+                    } else {
+                        // Fallback for browsers lacking requestIdleCallback
+                        setTimeout(() => {
+                            get().fetchBacklinks(id);
+                        }, 0);
+                    }
 
                     // 4. Initialize Sync
                     const provider = new SupabaseProvider(newDoc, supabase, `room:${state.user.id}:${id}`);
@@ -596,8 +606,6 @@ export const useOutlinerStore = create<OutlinerState>()(
 
                     await savePromise;
                     console.log("Force Sync Complete");
-
-                    await savePromise;
                     console.log("Force Sync Complete");
                 }
             };
