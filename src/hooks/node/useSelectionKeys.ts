@@ -1,7 +1,7 @@
 import type { NodeId, NodeData } from '@/types/outliner';
 import { executeIfMatch, isMatch } from '@/utils/keybindings';
 import { useNodeClipboard } from './useNodeClipboard';
-import { useOutlinerStore } from '@/store/outliner';
+import { useOutlinerStore } from '@/store/outlinerStore';
 
 export const useSelectionKeys = (
     id: NodeId,

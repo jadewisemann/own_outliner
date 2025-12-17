@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useOutlinerStore } from '../store/outliner';
+import { useOutlinerStore } from '../store/outlinerStore';
 import type { NodeId } from '../types/outliner';
 
 interface SearchModalProps {

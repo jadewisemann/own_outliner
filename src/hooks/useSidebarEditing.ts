@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { useOutlinerStore } from '@/store/outliner';
+import { useOutlinerStore } from '@/store/outlinerStore';
 
 export function useSidebarEditing() {
     const { createDocument, renameDocument, deleteDocument } = useOutlinerStore();

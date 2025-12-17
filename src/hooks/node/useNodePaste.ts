@@ -1,6 +1,6 @@
 import React from 'react';
 import type { NodeId } from '@/types/outliner';
-import { useOutlinerStore } from '@/store/outliner';
+import { useOutlinerStore } from '@/store/outlinerStore';
 
 export const useNodePaste = (id: NodeId) => {
   const handlePaste = async (e: React.ClipboardEvent) => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useOutlinerStore } from '../store/outliner';
+import { useOutlinerStore } from '../store/outlinerStore';
 import type { Keybinding, KeyAction } from '../types/outliner';
 
 interface SettingsModalProps {

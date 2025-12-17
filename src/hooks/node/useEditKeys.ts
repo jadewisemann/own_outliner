@@ -2,7 +2,7 @@ import type { RefObject } from 'react';
 import type { NodeId, NodeData } from '@/types/outliner';
 import { executeIfMatch, isMatch } from '@/utils/keybindings';
 import { useNodeFormatting } from './useNodeFormatting';
-import { useOutlinerStore } from '@/store/outliner';
+import { useOutlinerStore } from '@/store/outlinerStore';
 
 export const useEditKeys = (
     id: NodeId,

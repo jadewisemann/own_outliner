@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useOutlinerStore } from '@/store/outliner';
+import { useOutlinerStore } from '@/store/outlinerStore';
 
 export const LoginModal: React.FC = () => {
     const [email, setEmail] = useState('');

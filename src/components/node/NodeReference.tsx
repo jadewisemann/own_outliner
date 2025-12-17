@@ -1,5 +1,5 @@
 import React from 'react';
-import { useOutlinerStore } from '@/store/outliner';
+import { useOutlinerStore } from '@/store/outlinerStore';
 import type { NodeId } from '@/types/outliner';
 
 interface NodeReferenceProps {
