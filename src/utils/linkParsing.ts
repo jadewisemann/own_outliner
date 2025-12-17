@@ -6,24 +6,23 @@
  * 2. ((BlockID)) -> Target Node ID
  */
 
-interface ParsedLink {
+export interface ParsedLink {
     type: 'wiki' | 'block';
     target: string; // Title for wiki, NodeId for block
+    sourceNodeId: string;
+    excerpt: string;
 }
 
-export const parseLinks = (content: string): ParsedLink[] => {
+export const parseLinks = (nodeId: string, content: string): ParsedLink[] => {
     if (!content) return [];
 
     const links: ParsedLink[] = [];
 
     // Regex for [[WikiLink]]
     // Matches [[Title]] or [[Title|Alias]]
-    // Captures Title in group 1
     const wikiRegex = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
 
     // Regex for ((BlockID))
-    // Matches ((id))
-    // Captures id in group 1
     const blockRegex = /\(\(([a-zA-Z0-9-]+)\)\)/g;
 
     let match;
@@ -32,7 +31,9 @@ export const parseLinks = (content: string): ParsedLink[] => {
     while ((match = wikiRegex.exec(content)) !== null) {
         links.push({
             type: 'wiki',
-            target: match[1].trim()
+            target: match[1].trim(),
+            sourceNodeId: nodeId,
+            excerpt: content // Store full content or snippet? Full content is safer for context, can truncate in UI.
         });
     }
 
@@ -40,7 +41,9 @@ export const parseLinks = (content: string): ParsedLink[] => {
     while ((match = blockRegex.exec(content)) !== null) {
         links.push({
             type: 'block',
-            target: match[1].trim()
+            target: match[1].trim(),
+            sourceNodeId: nodeId,
+            excerpt: content
         });
     }
 

@@ -9,7 +9,10 @@ import { LoginModal } from './components/LoginModal';
 import { MainLayout } from './components/layout/MainLayout';
 import { SlashMenu } from '@/components/editor/SlashMenu';
 import { useVisibleNodes } from './hooks/useVisibleNodes';
+
 import { isMatch } from './utils/keybindings';
+import { Backlinks } from '@/features/backlinks/components/Backlinks';
+
 
 function App() {
   const rootNodeId = useOutlinerStore((state) => state.rootNodeId);
@@ -231,6 +234,9 @@ function App() {
               )}
             />
           )}
+
+          <Backlinks />
+
         </>
       )}
 

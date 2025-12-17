@@ -6,7 +6,7 @@ import { useNodePaste } from '@/hooks/node/useNodePaste';
 import { useNodeKeys } from '@/hooks/node/useNodeKeys';
 // Components
 import { Check, Terminal } from 'lucide-react';
-import { NodeBacklinksIndicator } from './NodeBacklinksIndicator';
+
 import { NodeMarkdown } from './NodeMarkdown';
 import { InlineSearchPopup } from '@/components/InlineSearchPopup'; // Imported
 
@@ -288,7 +288,7 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id }) => {
             )}
 
             {/* Indicators */}
-            <NodeBacklinksIndicator id={id} />
+
         </div>
     );
 };
