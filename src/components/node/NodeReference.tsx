@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link2 } from 'lucide-react';
 import { useOutlinerStore } from '@/store/outlinerStore';
 import type { NodeId } from '@/types/outliner';
 
@@ -48,8 +49,8 @@ export const NodeReference: React.FC<NodeReferenceProps> = ({ nodeId, children }
             "
             title={`Link to: ${nodeContent}`}
         >
-            <span className="opacity-50 text-[10px] mr-1">@</span>
-            {finalContent}
+            <Link2 className="w-3 h-3 opacity-50 stroke-[2.5px]" />
+            <span className="truncate max-w-[150px]">{finalContent}</span>
         </span>
     );
 };

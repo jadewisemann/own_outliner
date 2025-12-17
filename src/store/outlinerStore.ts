@@ -39,7 +39,8 @@ export const useOutlinerStore = create<OutlinerState>()(
                 activeDocumentId: null,
 
                 flashId: null,
-                backlinks: {},
+                backlinks: [],
+
 
 
                 // Slash Menu State
@@ -401,8 +402,21 @@ export const useOutlinerStore = create<OutlinerState>()(
                         nodes: {},
                         doc: newDoc,
                         provider: undefined,
-                        undoManager
+                        undoManager,
+                        backlinks: [] // Clear previous references to avoid stale data
                     });
+
+                    // Defer fetching backlinks until the browser is idle to prioritize rendering
+                    if (typeof requestIdleCallback !== 'undefined') {
+                        requestIdleCallback(() => {
+                            get().fetchBacklinks(id);
+                        });
+                    } else {
+                        // Fallback for browsers lacking requestIdleCallback
+                        setTimeout(() => {
+                            get().fetchBacklinks(id);
+                        }, 0);
+                    }
 
                     // 4. Initialize Sync
                     const provider = new SupabaseProvider(newDoc, supabase, `room:${state.user.id}:${id}`);
@@ -481,6 +495,36 @@ export const useOutlinerStore = create<OutlinerState>()(
                     }
                 },
 
+                fetchBacklinks: async (docId: string) => {
+                    if (!docId) return;
+                    const { data, error } = await supabase
+                        .from('document_references')
+                        .select(`
+                            id,
+                            source_document_id,
+                            source_node_id,
+                            excerpt,
+                            documents!source_document_id (title)
+                        `)
+                        .eq('target_document_id', docId);
+
+                    if (error) {
+                        console.error('Error fetching backlinks:', error);
+                        return;
+                    }
+
+                    // Map to BacklinkItem
+                    const links = data.map((ref: any) => ({
+                        id: ref.id,
+                        sourceDocId: ref.source_document_id,
+                        sourceDocTitle: ref.documents?.title || 'Unknown',
+                        sourceNodeId: ref.source_node_id,
+                        excerpt: ref.excerpt
+                    }));
+
+                    set({ backlinks: links });
+                },
+
                 forceSync: async () => {
                     const state = get();
                     const { activeDocumentId, doc } = state;
@@ -514,22 +558,32 @@ export const useOutlinerStore = create<OutlinerState>()(
                         .eq('id', activeDocumentId);
 
                     // 2. Extract Links & Diffing
-                    const foundLinks = new Set<string>();
+                    interface LinkRef {
+                        targetId: string;
+                        sourceNodeId: string;
+                        excerpt: string;
+                    }
+                    const foundLinks: LinkRef[] = [];
 
                     Object.values(currentNodes).forEach(node => {
-                        const parsed = parseLinks(node.content);
+                        // Pass node.id to parseLinks
+                        const parsed = parseLinks(node.id, node.content);
                         parsed.forEach(link => {
                             if (link.type === 'wiki') {
                                 const targetTitle = link.target;
                                 const targetDoc = state.documents.find(d => d.title === targetTitle);
                                 if (targetDoc) {
-                                    foundLinks.add(targetDoc.id);
+                                    foundLinks.push({
+                                        targetId: targetDoc.id,
+                                        sourceNodeId: link.sourceNodeId,
+                                        excerpt: link.excerpt
+                                    });
                                 }
                             }
                         });
                     });
 
-                    console.log("Force Saving doc:", activeDocumentId, "Links:", Array.from(foundLinks));
+                    console.log("Force Saving doc:", activeDocumentId, "Links Count:", foundLinks.length);
 
                     // 3. Sync References (Always replace for correctness, relying on 2s debounce for performance)
                     const { error: deleteError } = await supabase
@@ -537,10 +591,12 @@ export const useOutlinerStore = create<OutlinerState>()(
                         .delete()
                         .eq('source_document_id', activeDocumentId);
 
-                    if (!deleteError && foundLinks.size > 0) {
-                        const refsToInsert = Array.from(foundLinks).map(targetId => ({
+                    if (!deleteError && foundLinks.length > 0) {
+                        const refsToInsert = foundLinks.map(link => ({
                             source_document_id: activeDocumentId,
-                            target_document_id: targetId,
+                            target_document_id: link.targetId,
+                            source_node_id: link.sourceNodeId,
+                            excerpt: link.excerpt,
                         }));
 
                         await supabase
@@ -549,6 +605,7 @@ export const useOutlinerStore = create<OutlinerState>()(
                     }
 
                     await savePromise;
+                    console.log("Force Sync Complete");
                     console.log("Force Sync Complete");
                 }
             };
@@ -561,7 +618,7 @@ export const useOutlinerStore = create<OutlinerState>()(
                 // ... migration logic preserved ...
                 if (version < 8) {
                     // ... legacy migrations ...
-                    state.backlinks = {};
+                    state.backlinks = [];
                 }
 
                 // Doc Management Migration (Version 9) - Removed legacy migration for DB sync
