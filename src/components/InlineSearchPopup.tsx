@@ -4,15 +4,17 @@ import { useOutlinerStore } from '@/store/outlinerStore';
 
 interface InlineSearchPopupProps {
     mode: 'node' | 'document';
+    targetDocTitle?: string | null;
     query: string;
     position: { top: number; left: number };
     onSelect: (id: string, label: string) => void;
     onClose: () => void;
 }
 
-export const InlineSearchPopup: React.FC<InlineSearchPopupProps> = ({ mode, query, position, onSelect, onClose }) => {
+export const InlineSearchPopup: React.FC<InlineSearchPopupProps> = ({ mode, targetDocTitle, query, position, onSelect, onClose }) => {
     const nodes = useOutlinerStore(state => state.nodes);
     const documents = useOutlinerStore(state => state.documents);
+    const activeDocumentId = useOutlinerStore(state => state.activeDocumentId);
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
 
@@ -68,12 +70,30 @@ export const InlineSearchPopup: React.FC<InlineSearchPopupProps> = ({ mode, quer
                 }));
         } else {
             // Node Mode (Flat)
+            // If targetDocTitle is set, check if it matches current doc
+            // If it's a remote doc, we currently can't search its nodes efficiently without an async fetch.
+            // For MVP, we only search current doc nodes.
+            // We should filter if targetDocTitle exists and != current doc title.
+
+            const currentDoc = documents.find(d => d.id === activeDocumentId);
+            if (targetDocTitle && currentDoc && targetDocTitle !== currentDoc.title) {
+                // Remote Doc: Return placeholder or empty
+                return [{
+                    id: 'remote-warning',
+                    content: `Cannot search nodes in '${targetDocTitle}' (Remote search not supported yet)`,
+                    type: 'node',
+                    path: '',
+                    isFolder: false,
+                    isWarning: true // Handle this in render?
+                }];
+            }
+
             return Object.values(nodes)
                 .filter(node => node.content.toLowerCase().includes(lowerQuery) && node.content.trim().length > 0)
                 .slice(0, 10)
                 .map(node => ({ ...node, type: 'node', path: '', isFolder: false }));
         }
-    }, [nodes, documents, query, mode, currentFolderId]);
+    }, [nodes, documents, query, mode, currentFolderId, targetDocTitle, activeDocumentId]);
 
     const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 

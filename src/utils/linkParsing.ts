@@ -7,8 +7,10 @@
  */
 
 export interface ParsedLink {
-    type: 'wiki' | 'block';
-    target: string; // Title for wiki, NodeId for block
+    type: 'wiki';
+    target: string; // Document Title (empty if local block ref)
+    blockId?: string; // Block ID (if present)
+    alias?: string;   // Alias text
     sourceNodeId: string;
     excerpt: string;
 }
@@ -18,30 +20,33 @@ export const parseLinks = (nodeId: string, content: string): ParsedLink[] => {
 
     const links: ParsedLink[] = [];
 
-    // Regex for [[WikiLink]]
-    // Matches [[Title]] or [[Title|Alias]]
-    const wikiRegex = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
+    // Regex for [[Title^BlockID|Alias]]
+    // Matches:
+    // 1. [[Title]]
+    // 2. [[^BlockID]] (Local)
+    // 3. [[Title^BlockID]] (Remote)
+    // 4. [[Title|Alias]]
 
-    // Regex for ((BlockID))
-    const blockRegex = /\(\(([a-zA-Z0-9-]+)\)\)/g;
+    // Group 1: Title (optional, but if missing, Group 2 MUST exist)
+    // Group 2: BlockID (optional)
+    // Group 3: Alias (optional)
+    const wikiRegex = /\[\[([^\]^|]*)(?:\^([^\]|]+))?(?:\|([^\]]+))?\]\]/g;
 
     let match;
 
-    // Extract WikiLinks
     while ((match = wikiRegex.exec(content)) !== null) {
+        const title = match[1].trim();
+        const blockId = match[2]?.trim();
+        const alias = match[3]?.trim();
+
+        // Valid link must have either Title or BlockID
+        if (!title && !blockId) continue;
+
         links.push({
             type: 'wiki',
-            target: match[1].trim(),
-            sourceNodeId: nodeId,
-            excerpt: content // Store full content or snippet? Full content is safer for context, can truncate in UI.
-        });
-    }
-
-    // Extract BlockRefs
-    while ((match = blockRegex.exec(content)) !== null) {
-        links.push({
-            type: 'block',
-            target: match[1].trim(),
+            target: title,
+            blockId: blockId,
+            alias: alias,
             sourceNodeId: nodeId,
             excerpt: content
         });

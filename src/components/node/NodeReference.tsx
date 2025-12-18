@@ -43,9 +43,13 @@ export const NodeReference: React.FC<NodeReferenceProps> = ({ nodeId, children }
         <span
             onClick={handleClick}
             className="
-                text-blue-600 hover:text-blue-800 underline decoration-blue-300/50 hover:decoration-blue-800
-                cursor-pointer hover:bg-blue-50 rounded px-0.5 -mx-0.5 transition-colors
-                pointer-events-auto
+                inline-flex items-center gap-0.5
+                bg-blue-50/80 hover:bg-blue-100 text-blue-600 hover:text-blue-700
+                border border-blue-200/50 rounded-md
+                px-1.5 py-0.5 mx-0.5
+                text-xs font-medium
+                cursor-pointer transition-colors select-none
+                pointer-events-auto align-middle
             "
             title={`Link to: ${nodeContent}`}
         >

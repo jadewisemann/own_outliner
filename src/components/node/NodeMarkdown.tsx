@@ -2,6 +2,7 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { NodeReference } from './NodeReference';
+import { FileText, ChevronRight } from 'lucide-react';
 
 interface NodeMarkdownProps {
     content: string;
@@ -66,8 +67,63 @@ export const NodeMarkdown: React.FC<NodeMarkdownProps> = ({ content }) => {
                 }
 
                 if (part.startsWith('[[') && part.endsWith(']]')) {
-                    // It's a wiki link: [[Title]] or [[Title|Alias]]
+                    // It's a wiki link: [[Title]], [[Title|Alias]], [[^BlockID]], [[Title^BlockID]]
                     const rawContent = part.slice(2, -2);
+
+                    // Check for Block Link (contains ^)
+                    if (rawContent.includes('^')) {
+                        const [targetDocTitle, blockId] = rawContent.split('^');
+
+                        // Case: [[^id]] (Local)
+                        if (targetDocTitle === '') {
+                            return <NodeReference key={index} nodeId={blockId} />;
+                        }
+
+                        // Case: [[Title^id]] (Remote)
+                        // Verify target doc exists
+                        const targetDoc = resolveDocument(targetDocTitle, documents);
+                        if (targetDoc) {
+                            // Render as Remote Node Reference
+                            // TODO: NodeReference needs to learn how to fetch/display *remote* nodes?
+                            // Currently NodeReference takes 'nodeId'. 
+                            // If it relies on 'useNodeLogic', it checks 'store.nodes'.
+                            // If remote node is not in store, it will fail/empty.
+                            // For now, we render a Link to the Doc, maybe with a suffix?
+                            // Or we try NodeReference (it might work if we have the node loaded).
+                            // User requirement: "Display it correctly". 
+                            // If it breaks, use fallback text.
+                            return (
+                                <span key={index} className="inline-flex items-center gap-0.5 align-middle select-none">
+                                    <span
+                                        className="
+                                            inline-flex items-center gap-1
+                                            bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800
+                                            border border-gray-200 rounded-md
+                                            px-1.5 py-0.5
+                                            text-xs font-medium
+                                            cursor-pointer transition-colors
+                                        "
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setActiveDocument(targetDoc.id);
+                                            // We should also focus the node... passed as param?
+                                            // Store needs 'flashId' or similar.
+                                        }}
+                                    >
+                                        <FileText className="w-3 h-3 opacity-70" />
+                                        <span className="truncate max-w-[100px]">{targetDocTitle}</span>
+                                    </span>
+                                    <ChevronRight className="w-3 h-3 text-gray-400" />
+                                    <NodeReference nodeId={blockId} />
+                                </span>
+                            );
+                        } else {
+                            // Broken Remote Link
+                            return <span key={index} className="text-red-400 opacity-60">[[{rawContent}]]</span>;
+                        }
+                    }
+
+                    // Regular Wiki Link
                     const [linkTarget, linkAlias] = rawContent.split('|');
                     const displayText = linkAlias || linkTarget;
 
