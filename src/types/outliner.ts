@@ -53,6 +53,7 @@ export interface OutlinerSettings {
     splitBehavior: 'sibling' | 'child' | 'auto';
     linkClickBehavior: 'edit' | 'select' | 'navigate'; // 'edit' = focus input, 'select' = regular selection, 'navigate' = follow link
     keybindings: Record<KeyAction, Keybinding>;
+    logicalOutdent: boolean; // true: 현재 동작 유지, false: Direct Outdent
 }
 
 export interface Document {

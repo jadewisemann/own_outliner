@@ -15,6 +15,7 @@ const defaultSettings: OutlinerSettings = {
     splitBehavior: 'auto',
     linkClickBehavior: 'edit',
     keybindings: defaultKeybindings as Record<KeyAction, Keybinding>,
+    logicalOutdent: true,
 };
 
 export const createSettingsSlice: StateCreator<OutlinerState, [], [], SettingsSlice> = (set) => ({

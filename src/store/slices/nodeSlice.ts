@@ -309,7 +309,7 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
     },
 
     outdentNode: (id) => {
-        const { doc, rootNodeId } = get();
+        const { doc, rootNodeId, settings } = get();
         if (!doc) return;
 
         doc.transact(() => {
@@ -329,14 +329,37 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
             const grandParent = yNodes.get(grandParentId) as Y.Map<any>;
             if (!grandParent) return;
 
-            // Move
             const children = parent.get('children') as Y.Array<string>;
             const arr = children.toArray();
             const index = arr.indexOf(id);
             if (index === -1) return;
 
-            children.delete(index, 1);
+            // Direct Outdent: 뒤 형제들을 현재 노드의 자식으로 이동
+            if (!settings.logicalOutdent) {
+                const followingSiblings = arr.slice(index + 1);
+                if (followingSiblings.length > 0) {
+                    // 1. 부모에서 뒤 형제들 제거
+                    children.delete(index + 1, followingSiblings.length);
 
+                    // 2. 현재 노드의 자식으로 추가
+                    const nodeChildren = node.get('children') as Y.Array<string>;
+                    nodeChildren.push(followingSiblings);
+
+                    // 3. 형제들의 parentId 업데이트
+                    followingSiblings.forEach(sibId => {
+                        const sib = yNodes.get(sibId) as Y.Map<any>;
+                        if (sib) sib.set('parentId', id);
+                    });
+                }
+            }
+
+            // 부모에서 현재 노드 제거
+            const currentIndex = children.toArray().indexOf(id);
+            if (currentIndex !== -1) {
+                children.delete(currentIndex, 1);
+            }
+
+            // 조부모에 삽입 (부모 다음 위치)
             const gpChildren = grandParent.get('children') as Y.Array<string>;
             const gpArr = gpChildren.toArray();
             const parentIndex = gpArr.indexOf(parentId);
