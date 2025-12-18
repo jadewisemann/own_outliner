@@ -1,5 +1,5 @@
 import React from 'react';
-import { Hash } from 'lucide-react';
+import { Link2 } from 'lucide-react';
 import { useOutlinerStore } from '@/store/outlinerStore';
 import type { NodeId } from '@/types/outliner';
 
@@ -53,7 +53,7 @@ export const NodeReference: React.FC<NodeReferenceProps> = ({ nodeId, children }
             "
             title={`Link to: ${nodeContent}`}
         >
-            <Hash className="w-3 h-3 opacity-50 stroke-[2.5px]" />
+            <Link2 className="w-3 h-3 opacity-50 stroke-[2.5px]" />
             <span className="truncate max-w-[150px]">{finalContent}</span>
         </span>
     );

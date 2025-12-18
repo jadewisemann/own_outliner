@@ -72,10 +72,10 @@ Dynalist와 Workflowy에서 영감을 받아, 마우스 없이 키보드만으�
 
 
 ### **I.5**: core refine
-    - [ ] internal link refactoring
+    - [x] internal link refactoring
         - [x] add alias
         - [x] add node link
-        - [ ] add backlink
+        - [x] add backlink
 
 
 ### **II**: core improvement and add feature
