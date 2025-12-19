@@ -1,14 +1,6 @@
 
 import type { StateCreator } from 'zustand';
-import type { OutlinerState, NodeId } from '@/types/outliner';
-
-export interface FocusSlice {
-    focusedId: NodeId | null;
-    focusCursorPos: number | null;
-
-    setFocus: (id: NodeId | null, cursorPos?: number | null) => void;
-    moveFocus: (direction: 'up' | 'down', select?: boolean) => boolean;
-}
+import type { OutlinerState, NodeId, FocusSlice } from '@/types/outliner';
 
 export const createFocusSlice: StateCreator<OutlinerState, [], [], FocusSlice> = (set, get) => ({
     focusedId: null,
