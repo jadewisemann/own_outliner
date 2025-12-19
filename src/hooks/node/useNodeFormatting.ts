@@ -1,14 +1,24 @@
 import type { RefObject } from 'react';
 import type { NodeId } from '@/types/outliner';
 
-export const useNodeFormatting = (
-    inputRef: RefObject<HTMLInputElement | null>,
-    updateContent: (id: NodeId, content: string) => void
-) => {
-    const applyFormat = (
-        id: NodeId,
-        marker: string
-    ) => {
+export interface NodeFormattingProps {
+    inputRef: RefObject<HTMLInputElement | null>;
+    updateContent: (id: NodeId, content: string) => void;
+}
+
+export interface ApplyFormatProps {
+    id: NodeId;
+    marker: string;
+}
+
+export const useNodeFormatting = ({
+    inputRef,
+    updateContent
+}: NodeFormattingProps) => {
+    const applyFormat = ({
+        id,
+        marker
+    }: ApplyFormatProps) => {
         if (!inputRef.current) return;
 
         const input = inputRef.current;

@@ -1,13 +1,19 @@
-import type { NodeId, NodeData } from '@/types/outliner';
 import { executeIfMatch, isMatch } from '@/utils/keybindings';
-import { useNodeClipboard } from './useNodeClipboard';
 import { useOutlinerStore } from '@/store/outlinerStore';
+import { useNodeClipboard } from '@/hooks/node';
+import type { NodeId, NodeData, OutlinerSettings } from '@/types/outliner';
 
-export const useSelectionKeys = (
-    id: NodeId,
-    node: NodeData,
-    keys: any
-) => {
+export interface SelectionKeysProps {
+    id: NodeId;
+    node: NodeData;
+    keys: OutlinerSettings['keybindings'];
+}
+
+export const useSelectionKeys = ({
+    id,
+    node,
+    keys
+}: SelectionKeysProps) => {
     const { copyNodes, cutNodes, handleClipboardPaste } = useNodeClipboard();
 
     const handleSelectionMode = (e: React.KeyboardEvent) => {

@@ -1,23 +1,30 @@
+import type { KeyboardEvent } from 'react';
 import { useOutlinerStore } from '@/store/outlinerStore';
 import { isMatch, executeIfMatch } from '@/utils/keybindings';
-import type { NodeId, NodeData } from '@/types/outliner';
-import type { RefObject } from 'react';
-import { useSelectionKeys } from './useSelectionKeys';
-import { useEditKeys } from './useEditKeys';
+import type { NodeId, NodeData, OutlinerState, OutlinerSettings } from '@/types/outliner';
+import { useSelectionKeys, useEditKeys } from '@/hooks/node';
 
-export const useNodeKeys = (
-    id: NodeId,
-    node: NodeData,
-    isSelected: boolean,
-    inputRef: RefObject<HTMLInputElement | null>,
-    updateContent: (id: NodeId, content: string) => void
-) => {
+export interface NodeKeysProps {
+    id: NodeId;
+    node: NodeData;
+    isSelected: boolean;
+    inputRef: React.RefObject<HTMLInputElement | null>;
+    updateContent: (id: NodeId, content: string) => void;
+}
+
+export const useNodeKeys = ({
+    id,
+    node,
+    isSelected,
+    inputRef,
+    updateContent
+}: NodeKeysProps) => {
     const state = useOutlinerStore.getState();
     const keys = state.settings.keybindings;
 
     // Delegate mode-specific logic
-    const { handleSelectionMode } = useSelectionKeys(id, node, keys);
-    const { handleEditMode } = useEditKeys(id, node, keys, inputRef, updateContent);
+    const { handleSelectionMode } = useSelectionKeys({ id, node, keys });
+    const { handleEditMode } = useEditKeys({ id, node, keys, inputRef, updateContent });
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         // Refresh state
@@ -44,8 +51,8 @@ export const useNodeKeys = (
             return;
         }
 
-        if (handleCommonActions(e, currentKeys, currentState, id)) return;
-        if (handleFocusNavigation(e, currentKeys, currentState)) return;
+        if (handleCommonActions({ e, keys: currentKeys, state: currentState, id })) return;
+        if (handleFocusNavigation({ e, keys: currentKeys, state: currentState })) return;
 
         if (isSelected) {
             handleSelectionMode(e);
@@ -58,15 +65,37 @@ export const useNodeKeys = (
 };
 
 // --- Helper Handlers ---
+export interface CommonActionArgs {
+    e: KeyboardEvent;
+    keys: OutlinerSettings['keybindings'];
+    state: OutlinerState;
+    id: NodeId;
+}
 
-const handleCommonActions = (e: React.KeyboardEvent, keys: any, state: any, id: NodeId) => {
-    if (executeIfMatch(e, keys.moveUp, () => state.moveNode(id, 'up'))) return true;
-    if (executeIfMatch(e, keys.moveDown, () => state.moveNode(id, 'down'))) return true;
+const handleCommonActions = ({
+    e,
+    keys,
+    state,
+    id
+}: CommonActionArgs) => {
+    if (executeIfMatch(e as any, keys.moveUp, () => state.moveNode(id, 'up'))) return true;
+    if (executeIfMatch(e as any, keys.moveDown, () => state.moveNode(id, 'down'))) return true;
     return false;
 };
 
-const handleFocusNavigation = (e: React.KeyboardEvent, keys: any, state: any) => {
-    if (e.key === 'ArrowUp' && !isMatch(e, keys.moveUp)) {
+
+export interface FocusNavigationArgs {
+    e: KeyboardEvent;
+    keys: OutlinerSettings['keybindings'];
+    state: OutlinerState;
+}
+
+const handleFocusNavigation = ({
+    e,
+    keys,
+    state
+}: FocusNavigationArgs) => {
+    if (e.key === 'ArrowUp' && !isMatch(e as any, keys.moveUp)) {
         e.preventDefault();
         const success = state.moveFocus('up', e.shiftKey);
         if (!success && !e.shiftKey) {
@@ -75,7 +104,7 @@ const handleFocusNavigation = (e: React.KeyboardEvent, keys: any, state: any) =>
         }
         return true;
     }
-    if (e.key === 'ArrowDown' && !isMatch(e, keys.moveDown)) {
+    if (e.key === 'ArrowDown' && !isMatch(e as any, keys.moveDown)) {
         e.preventDefault();
         state.moveFocus('down', e.shiftKey);
         return true;
