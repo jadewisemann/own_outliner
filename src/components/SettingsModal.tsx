@@ -131,6 +131,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                     </button>
                                 </div>
                             </div>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <span className="text-gray-700 font-medium">Logical Outdenting</span>
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                        켜짐: 노드만 이동 / 꺼짐: 뒤 형제를 자식으로 전환
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => useOutlinerStore.getState().setSetting('logicalOutdent', !settings.logicalOutdent)}
+                                    className={`relative w-12 h-6 rounded-full transition-colors ${settings.logicalOutdent ? 'bg-blue-500' : 'bg-gray-300'
+                                        }`}
+                                >
+                                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${settings.logicalOutdent ? 'translate-x-7' : 'translate-x-1'
+                                        }`} />
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div className="mb-8">

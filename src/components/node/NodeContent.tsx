@@ -1,9 +1,6 @@
 import { useState, useRef } from 'react'; // Added useState
-import type { NodeId } from '@/types/outliner';
-import { useNodeLogic } from '@/hooks/node/useNodeLogic';
-import { useNodeFocusProcessing } from '@/hooks/node/useNodeFocusProcessing';
-import { useNodePaste } from '@/hooks/node/useNodePaste';
-import { useNodeKeys } from '@/hooks/node/useNodeKeys';
+import type { NodeId, LinkPopupState } from '@/types/outliner';
+import { useNodeLogic, useNodeFocusProcessing, useNodePaste, useNodeKeys } from '@/hooks/node';
 // Components
 import { Check, Terminal } from 'lucide-react';
 
@@ -31,15 +28,7 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id }) => {
     } = useNodeLogic(id);
 
     // Popup State
-    const [linkPopup, setLinkPopup] = useState<{
-        isOpen: boolean;
-        type: 'node' | 'document';
-        targetDocTitle?: string | null;
-        position: { top: number; left: number };
-        query: string;
-        triggerIndex: number;
-        triggerLength: number; // Added to track full length of [[... text to replace
-    }>({
+    const [linkPopup, setLinkPopup] = useState<LinkPopupState>({
         isOpen: false,
         type: 'node',
         targetDocTitle: null,
@@ -53,9 +42,9 @@ export const NodeContent: React.FC<NodeContentProps> = ({ id }) => {
     const containerRef = useRef<HTMLDivElement>(null); // For future use if we make the container focusable
 
     // Hooks
-    useNodeFocusProcessing(id, isSelected, isFocused, focusCursorPos, inputRef, containerRef);
+    useNodeFocusProcessing({ id, isSelected, isFocused, focusCursorPos, inputRef, containerRef });
     const { handlePaste } = useNodePaste(id);
-    const { handleKeyDown } = useNodeKeys(id, node, isSelected, inputRef, updateContent);
+    const { handleKeyDown } = useNodeKeys({ id, node, isSelected, inputRef, updateContent });
 
     if (!node) return null;
 

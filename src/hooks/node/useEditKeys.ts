@@ -1,17 +1,25 @@
 import type { RefObject } from 'react';
-import type { NodeId, NodeData } from '@/types/outliner';
 import { executeIfMatch, isMatch } from '@/utils/keybindings';
-import { useNodeFormatting } from './useNodeFormatting';
+import { useNodeFormatting } from '@/hooks/node/useNodeFormatting';
 import { useOutlinerStore } from '@/store/outlinerStore';
+import type { NodeId, NodeData, OutlinerSettings } from '@/types/outliner';
 
-export const useEditKeys = (
-    id: NodeId,
-    node: NodeData,
-    keys: any,
-    inputRef: RefObject<HTMLInputElement | null>,
-    updateContent: (id: NodeId, content: string) => void
-) => {
-    const { applyFormat } = useNodeFormatting(inputRef, updateContent);
+export interface EditKeysProps {
+    id: NodeId;
+    node: NodeData;
+    keys: OutlinerSettings['keybindings'];
+    inputRef: RefObject<HTMLInputElement | null>;
+    updateContent: (id: NodeId, content: string) => void;
+}
+
+export const useEditKeys = ({
+    id,
+    node,
+    keys,
+    inputRef,
+    updateContent
+}: EditKeysProps) => {
+    const { applyFormat } = useNodeFormatting({ inputRef, updateContent });
 
     const handleEditMode = (e: React.KeyboardEvent) => {
         const state = useOutlinerStore.getState();
@@ -71,9 +79,9 @@ export const useEditKeys = (
         if (executeIfMatch(e, keys.selectLine, () => state.selectNode(id, false))) return;
 
         // Formatting
-        if (executeIfMatch(e, keys.formatBold, () => applyFormat(id, '**'))) return;
-        if (executeIfMatch(e, keys.formatItalic, () => applyFormat(id, '*'))) return;
-        if (executeIfMatch(e, keys.formatStrike, () => applyFormat(id, '~~'))) return;
+        if (executeIfMatch(e, keys.formatBold, () => applyFormat({ id, marker: '**' }))) return;
+        if (executeIfMatch(e, keys.formatItalic, () => applyFormat({ id, marker: '*' }))) return;
+        if (executeIfMatch(e, keys.formatStrike, () => applyFormat({ id, marker: '~~' }))) return;
 
         // Undo/Redo
         if (executeIfMatch(e, keys.undo, () => state.undo())) return;

@@ -1,16 +1,6 @@
 
 import type { StateCreator } from 'zustand';
-import type { OutlinerState, NodeId } from '@/types/outliner';
-
-export interface SelectionSlice {
-    selectedIds: NodeId[];
-    selectionAnchorId: NodeId | null;
-
-    selectNode: (id: NodeId, multi?: boolean) => void;
-    deselectAll: () => void;
-    selectRange: (targetId: NodeId) => void;
-    expandSelection: (currentId: NodeId) => void;
-}
+import type { OutlinerState, NodeId, SelectionSlice } from '@/types/outliner';
 
 export const createSelectionSlice: StateCreator<OutlinerState, [], [], SelectionSlice> = (set, get) => ({
     selectedIds: [],

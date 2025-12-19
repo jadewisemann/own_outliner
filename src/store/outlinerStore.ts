@@ -50,9 +50,8 @@ export const useOutlinerStore = create<OutlinerState>()(
                     targetNodeId: null,
                     filterText: ''
                 },
-                setSlashMenu: (payload) => set((prev) => ({
-                    ...prev,
-                    slashMenu: { ...prev.slashMenu, ...payload }
+                setSlashMenu: (state) => set((prev) => ({
+                    slashMenu: { ...prev.slashMenu, ...state }
                 })),
 
                 // Clipboard State
