@@ -118,129 +118,88 @@ export const moveNode = ({
         const node = yNodes.get(id) as Y.Map<any>;
         if (!node) return;
 
-        interface FlatItem {
-            id: string;
-            depth: number;
-            parentId: string;
-        }
-        const flatList: FlatItem[] = [];
+        // 1. Build flat list of currently visible nodes
         const activeRootId = hoistedNodeId || rootNodeId;
+        const fullList: Array<{ id: string; parentId: string; depth: number }> = [];
 
         const traverse = (nodeId: string, depth: number) => {
             const n = nodes[nodeId];
             if (!n) return;
-
             if (nodeId !== activeRootId) {
-                flatList.push({ id: nodeId, depth, parentId: n.parentId! });
+                fullList.push({ id: nodeId, parentId: n.parentId!, depth });
             }
-
             if (!n.isCollapsed && n.children.length > 0) {
-                n.children.forEach(childId => traverse(childId, depth + 1));
+                n.children.forEach((childId: string) => traverse(childId, depth + 1));
             }
         };
+        traverse(activeRootId, -1);
 
-        const root = nodes[activeRootId];
-        if (root) {
-            root.children.forEach(childId => traverse(childId, 0));
+        const startIndex = fullList.findIndex(item => item.id === id);
+        if (startIndex === -1) return;
+
+        // 2. Identify the range of the moving subtree
+        let endIndex = startIndex;
+        const startDepth = fullList[startIndex].depth;
+        for (let i = startIndex + 1; i < fullList.length; i++) {
+            if (fullList[i].depth > startDepth) endIndex = i;
+            else break;
         }
 
-        const currentIndex = flatList.findIndex(item => item.id === id);
-        if (currentIndex === -1) return;
+        const oldParentId = fullList[startIndex].parentId;
+        const oldParentY = yNodes.get(oldParentId) as Y.Map<any>;
+        const oldChildren = oldParentY.get('children') as Y.Array<string>;
+        const oldIndex = oldChildren.toArray().indexOf(id);
+
+        let targetParentId: string | null = null;
+        let targetIndex: number = 0;
 
         if (direction === 'up') {
-            if (currentIndex === 0) return;
+            if (startIndex === 0) return; // Already at top
 
-            const current = flatList[currentIndex];
-            const prev = flatList[currentIndex - 1];
-            const newPrev = currentIndex > 1 ? flatList[currentIndex - 2] : null;
-
-            let targetParentId: string;
-            let targetIndex: number;
-            let targetDepth: number;
-
-            if (current.depth > prev.depth) {
-                targetParentId = prev.parentId;
+            const neighbor = fullList[startIndex - 1];
+            // If the neighbor is our parent, move us to be a sibling of the parent (above it)
+            if (neighbor.id === oldParentId) {
+                const grandparentId = neighbor.parentId;
+                const grandparentY = yNodes.get(grandparentId) as Y.Map<any>;
+                if (!grandparentY) return;
+                const grandChildren = grandparentY.get('children') as Y.Array<string>;
+                targetParentId = grandparentId;
+                targetIndex = grandChildren.toArray().indexOf(neighbor.id);
+            } else {
+                // Otherwise, move us to be a sibling of the neighbor (at its position)
+                targetParentId = neighbor.parentId;
                 const parentY = yNodes.get(targetParentId) as Y.Map<any>;
                 const parentChildren = parentY.get('children') as Y.Array<string>;
-                targetIndex = parentChildren.toArray().indexOf(prev.id);
-                targetDepth = prev.depth;
-            } else {
-                targetDepth = newPrev ? Math.min(current.depth, newPrev.depth + 1) : 0;
-
-                if (!newPrev || targetDepth === 0) {
-                    targetParentId = activeRootId;
-                    const parentY = yNodes.get(targetParentId) as Y.Map<any>;
-                    const parentChildren = parentY.get('children') as Y.Array<string>;
-                    const prevIdx = parentChildren.toArray().indexOf(prev.id);
-                    targetIndex = prevIdx;
-                } else {
-                    if (targetDepth > newPrev.depth) {
-                        targetParentId = newPrev.id;
-                        targetIndex = -1;
-                    } else {
-                        targetParentId = newPrev.parentId;
-                        const parentY = yNodes.get(targetParentId) as Y.Map<any>;
-                        const parentChildren = parentY.get('children') as Y.Array<string>;
-                        targetIndex = parentChildren.toArray().indexOf(newPrev.id) + 1;
-                    }
-                }
+                targetIndex = parentChildren.toArray().indexOf(neighbor.id);
             }
-
-            const oldParentY = yNodes.get(current.parentId) as Y.Map<any>;
-            const oldChildren = oldParentY.get('children') as Y.Array<string>;
-            const oldIndex = oldChildren.toArray().indexOf(id);
-            oldChildren.delete(oldIndex, 1);
-
-            const newParentY = yNodes.get(targetParentId) as Y.Map<any>;
-            const newChildren = newParentY.get('children') as Y.Array<string>;
-            if (targetIndex === -1 || targetIndex >= newChildren.length) {
-                newChildren.push([id]);
-            } else {
-                newChildren.insert(targetIndex, [id]);
-            }
-            node.set('parentId', targetParentId);
-
         } else {
-            if (currentIndex === flatList.length - 1) return;
+            if (endIndex === fullList.length - 1) return; // Already at bottom
 
-            const current = flatList[currentIndex];
-            const next = flatList[currentIndex + 1];
-            const newNext = currentIndex < flatList.length - 2 ? flatList[currentIndex + 2] : null;
+            const neighbor = fullList[endIndex + 1];
+            const neighborData = nodes[neighbor.id];
 
-            let targetParentId: string;
-            let targetIndex: number;
-
-            if (current.depth > next.depth) {
-                targetParentId = next.parentId;
-                const parentY = yNodes.get(targetParentId) as Y.Map<any>;
-                const parentChildren = parentY.get('children') as Y.Array<string>;
-                targetIndex = parentChildren.toArray().indexOf(next.id) + 1;
-            } else if (current.depth < next.depth) {
-                targetParentId = next.id;
+            // If neighbor is expanded and has children, move us to be its first child
+            if (neighborData && !neighborData.isCollapsed && neighborData.children.length > 0) {
+                targetParentId = neighbor.id;
                 targetIndex = 0;
             } else {
-                if (!newNext || newNext.depth <= current.depth) {
-                    targetParentId = next.parentId;
-                    const parentY = yNodes.get(targetParentId) as Y.Map<any>;
-                    const parentChildren = parentY.get('children') as Y.Array<string>;
-                    targetIndex = parentChildren.toArray().indexOf(next.id) + 1;
-                } else {
-                    targetParentId = next.id;
-                    targetIndex = 0;
-                }
+                // Otherwise, move us to be a sibling of the neighbor (after it)
+                targetParentId = neighbor.parentId;
+                const parentY = yNodes.get(targetParentId) as Y.Map<any>;
+                const parentChildren = parentY.get('children') as Y.Array<string>;
+                targetIndex = parentChildren.toArray().indexOf(neighbor.id) + 1;
             }
+        }
 
-            const oldParentY = yNodes.get(current.parentId) as Y.Map<any>;
-            const oldChildren = oldParentY.get('children') as Y.Array<string>;
-            const oldIndex = oldChildren.toArray().indexOf(id);
+        if (targetParentId) {
             oldChildren.delete(oldIndex, 1);
+            const targetY = yNodes.get(targetParentId) as Y.Map<any>;
+            const targetChildren = targetY.get('children') as Y.Array<string>;
 
-            const newParentY = yNodes.get(targetParentId) as Y.Map<any>;
-            const newChildren = newParentY.get('children') as Y.Array<string>;
-            if (targetIndex === -1 || targetIndex >= newChildren.length) {
-                newChildren.push([id]);
+            if (targetIndex >= targetChildren.length || targetIndex === -1) {
+                targetChildren.push([id]);
             } else {
-                newChildren.insert(targetIndex, [id]);
+                targetChildren.insert(targetIndex, [id]);
             }
             node.set('parentId', targetParentId);
         }
