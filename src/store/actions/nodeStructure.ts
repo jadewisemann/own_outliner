@@ -1,13 +1,19 @@
 import * as Y from 'yjs';
 import { generateId } from '@/utils/storeUtils';
-import type { NodeId, OutlinerState, NodeTransferData } from '@/types/outliner';
+import type { NodeId, NodeTransferData, BaseActionProps, CoreNodeActionProps } from '@/types/outliner';
 
-export const pasteNodes = (
-    get: () => OutlinerState,
-    parentId: NodeId,
-    index: number,
-    nodesData: NodeTransferData[]
-) => {
+export interface PasteNodesProps extends BaseActionProps {
+    parentId: NodeId;
+    index: number;
+    nodesData: NodeTransferData[];
+}
+
+export const pasteNodes = ({
+    get,
+    parentId,
+    index,
+    nodesData
+}: PasteNodesProps) => {
     const { doc } = get();
     if (!doc) return;
 
@@ -50,12 +56,16 @@ export const pasteNodes = (
     });
 };
 
-export const splitNode = (
-    get: () => OutlinerState,
-    set: (state: Partial<OutlinerState>) => void,
-    id: NodeId,
-    cursorPosition: number
-) => {
+export interface SplitNodeProps extends CoreNodeActionProps {
+    cursorPosition: number;
+}
+
+export const splitNode = ({
+    get,
+    set,
+    id,
+    cursorPosition
+}: SplitNodeProps) => {
     const { doc, settings } = get();
     if (!doc) return;
 
@@ -111,11 +121,11 @@ export const splitNode = (
     set({ focusedId: newId, focusCursorPos: 0 });
 };
 
-export const mergeNode = (
-    get: () => OutlinerState,
-    set: (state: Partial<OutlinerState>) => void,
-    id: NodeId
-) => {
+export const mergeNode = ({
+    get,
+    set,
+    id
+}: CoreNodeActionProps) => {
     const { doc } = get();
     if (!doc) return;
 
@@ -149,7 +159,7 @@ export const mergeNode = (
         const myChildrenArr = myChildren.toArray();
         const prevChildren = prevSibling.get('children') as Y.Array<string>;
 
-        myChildrenArr.forEach(childId => {
+        myChildrenArr.forEach((childId: string) => {
             const child = yNodes.get(childId) as Y.Map<any>;
             if (child) child.set('parentId', prevSiblingId);
         });

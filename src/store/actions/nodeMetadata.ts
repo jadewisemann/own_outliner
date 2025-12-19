@@ -1,12 +1,17 @@
 import * as Y from 'yjs';
-import type { NodeId, OutlinerState, NodeMetadata } from '@/types/outliner';
+import type { NodeMetadata, SingleNodeActionProps } from '@/types/outliner';
 
-export const updateType = (
-    get: () => OutlinerState,
-    id: NodeId,
-    type: string,
-    attributes?: NodeMetadata
-) => {
+export interface UpdateTypeProps extends SingleNodeActionProps {
+    type: string;
+    attributes?: NodeMetadata;
+}
+
+export const updateType = ({
+    get,
+    id,
+    type,
+    attributes
+}: UpdateTypeProps) => {
     const { doc } = get();
     if (!doc) return;
 
@@ -23,10 +28,10 @@ export const updateType = (
     });
 };
 
-export const toggleComplete = (
-    get: () => OutlinerState,
-    id: NodeId
-) => {
+export const toggleComplete = ({
+    get,
+    id
+}: SingleNodeActionProps) => {
     const { doc } = get();
     if (!doc) return;
 

@@ -1,16 +1,22 @@
 import * as Y from 'yjs';
 import { generateId, createInitialNode } from '@/utils/storeUtils';
-import type { NodeId, OutlinerState } from '@/types/outliner';
+import type { NodeId, SingleNodeActionProps, CoreActionProps, CoreNodeActionProps } from '@/types/outliner';
 
 const INITIAL_ROOT_ID = 'root';
 
-export const addNode = (
-    get: () => OutlinerState,
-    set: (state: Partial<OutlinerState>) => void,
-    parentId: NodeId | null,
-    index?: number,
-    shouldFocus: boolean = true
-) => {
+export interface AddNodeProps extends CoreActionProps {
+    parentId: NodeId | null;
+    index?: number;
+    shouldFocus?: boolean;
+}
+
+export const addNode = ({
+    get,
+    set,
+    parentId,
+    index,
+    shouldFocus = true
+}: AddNodeProps) => {
     const { doc, rootNodeId } = get();
     if (!doc) return;
 
@@ -73,11 +79,15 @@ export const addNode = (
     return newId;
 };
 
-export const addNodeBefore = (
-    get: () => OutlinerState,
-    set: (state: Partial<OutlinerState>) => void,
-    siblingId: NodeId
-) => {
+export interface AddNodeBeforeProps extends CoreActionProps {
+    siblingId: NodeId;
+}
+
+export const addNodeBefore = ({
+    get,
+    set,
+    siblingId
+}: AddNodeBeforeProps) => {
     const { doc } = get();
     if (!doc) return;
 
@@ -94,16 +104,16 @@ export const addNodeBefore = (
     const index = arr.indexOf(siblingId);
 
     if (index !== -1) {
-        addNode(get, set, parentId, index, false);
+        addNode({ get, set, parentId, index, shouldFocus: false });
         set({ focusedId: siblingId, focusCursorPos: 0 });
     }
 };
 
-export const deleteNode = (
-    get: () => OutlinerState,
-    set: (state: Partial<OutlinerState>) => void,
-    id: NodeId
-) => {
+export const deleteNode = ({
+    get,
+    set,
+    id
+}: CoreNodeActionProps) => {
     const { doc } = get();
     if (!doc) return;
 
@@ -175,7 +185,7 @@ export const deleteNode = (
             if (!target) return;
             const children = target.get('children') as Y.Array<string>;
             if (children) {
-                children.forEach(childId => deleteRecursively(childId));
+                children.forEach((childId: string) => deleteRecursively(childId));
             }
             yNodes.delete(targetId);
         };
@@ -188,11 +198,15 @@ export const deleteNode = (
     }
 };
 
-export const updateContent = (
-    get: () => OutlinerState,
-    id: NodeId,
-    content: string
-) => {
+export interface UpdateContentProps extends SingleNodeActionProps {
+    content: string;
+}
+
+export const updateContent = ({
+    get,
+    id,
+    content
+}: UpdateContentProps) => {
     const { doc } = get();
     if (!doc) return;
 
@@ -206,10 +220,10 @@ export const updateContent = (
     });
 };
 
-export const toggleCollapse = (
-    get: () => OutlinerState,
-    id: NodeId
-) => {
+export const toggleCollapse = ({
+    get,
+    id
+}: SingleNodeActionProps) => {
     const { doc } = get();
     if (!doc) return;
     doc.transact(() => {

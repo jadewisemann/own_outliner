@@ -33,53 +33,38 @@ export const createNodeSlice: StateCreator<OutlinerState, [], [], NodeSlice> = (
 
     setHoistedNode: (id) => set({ hoistedNodeId: id }),
 
-    addNode: (parentId, index, shouldFocus = true) =>
-        addNode(get, set, parentId, index, shouldFocus),
+    addNode: (parentId, index, shouldFocus) => addNode({ get, set, parentId, index, shouldFocus }),
+    addNodeBefore: (siblingId) => addNodeBefore({ get, set, siblingId }),
 
-    addNodeBefore: (siblingId) =>
-        addNodeBefore(get, set, siblingId),
-
-    deleteNode: (id) =>
-        deleteNode(get, set, id),
-
-    updateContent: (id, content) =>
-        updateContent(get, id, content),
-
-    toggleCollapse: (id) =>
-        toggleCollapse(get, id),
+    deleteNode: (id) => deleteNode({ get, set, id }),
+    updateContent: (id, content) => updateContent({ get, id, content }),
+    toggleCollapse: (id) => toggleCollapse({ get, id }),
 
     deleteNodes: (ids) => {
         const { deleteNode } = get();
         ids.forEach(id => deleteNode(id));
     },
 
-    indentNode: (id) =>
-        indentNode(get, id),
+    indentNode: (id) => indentNode({ get, id }),
+    outdentNode: (id) => outdentNode({ get, id }),
 
-    outdentNode: (id) =>
-        outdentNode(get, id),
+    indentNodes: (ids) => indentNodes({ get, ids }),
+    outdentNodes: (ids) => outdentNodes({ get, ids }),
 
-    indentNodes: (ids) =>
-        indentNodes(get, ids),
-
-    outdentNodes: (ids) =>
-        outdentNodes(get, ids),
-
-    moveNode: (id, direction) =>
-        moveNode(get, id, direction),
+    moveNode: (id, direction) => moveNode({ get, id, direction }),
 
     pasteNodes: (parentId, index, nodesData) =>
-        pasteNodes(get, parentId, index, nodesData),
+        pasteNodes({ get, parentId, index, nodesData }),
 
     splitNode: (id, cursorPosition) =>
-        splitNode(get, set, id, cursorPosition),
+        splitNode({ get, set, id, cursorPosition }),
 
     mergeNode: (id) =>
-        mergeNode(get, set, id),
+        mergeNode({ get, set, id }),
 
     updateType: (id, type, attributes) =>
-        updateType(get, id, type, attributes),
+        updateType({ get, id, type, attributes }),
 
     toggleComplete: (id) =>
-        toggleComplete(get, id),
+        toggleComplete({ get, id }),
 });

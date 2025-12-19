@@ -1,11 +1,16 @@
 import * as Y from 'yjs';
-import type { NodeId, OutlinerState } from '@/types/outliner';
+import type { SingleNodeActionProps, MultiNodeActionProps } from '@/types/outliner';
 
-export const indentNode = (
-    get: () => OutlinerState,
-    id: NodeId
-) => {
+export interface MoveNodeActionProps extends SingleNodeActionProps {
+    direction: 'up' | 'down';
+}
+
+export const indentNode = ({
+    get,
+    id
+}: SingleNodeActionProps) => {
     const { doc } = get();
+    // ... (omitting body for now, will use multi_replace for precise edits)
     if (!doc) return;
 
     doc.transact(() => {
@@ -36,10 +41,10 @@ export const indentNode = (
     });
 };
 
-export const outdentNode = (
-    get: () => OutlinerState,
-    id: NodeId
-) => {
+export const outdentNode = ({
+    get,
+    id
+}: SingleNodeActionProps) => {
     const { doc, rootNodeId, settings } = get();
     if (!doc) return;
 
@@ -86,27 +91,25 @@ export const outdentNode = (
     });
 };
 
-export const indentNodes = (
-    get: () => OutlinerState,
-    ids: NodeId[]
-) => {
-    const { indentNode } = get();
-    ids.forEach(id => indentNode(id));
+export const indentNodes = ({
+    get,
+    ids
+}: MultiNodeActionProps) => {
+    ids.forEach(id => indentNode({ get, id }));
 };
 
-export const outdentNodes = (
-    get: () => OutlinerState,
-    ids: NodeId[]
-) => {
-    const { outdentNode } = get();
-    ids.forEach(id => outdentNode(id));
+export const outdentNodes = ({
+    get,
+    ids
+}: MultiNodeActionProps) => {
+    ids.forEach(id => outdentNode({ get, id }));
 };
 
-export const moveNode = (
-    get: () => OutlinerState,
-    id: NodeId,
-    direction: 'up' | 'down'
-) => {
+export const moveNode = ({
+    get,
+    id,
+    direction
+}: MoveNodeActionProps) => {
     const { doc, nodes, rootNodeId, hoistedNodeId } = get();
     if (!doc) return;
 

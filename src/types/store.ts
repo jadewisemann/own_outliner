@@ -7,6 +7,26 @@ export interface ClipboardDocument {
     op: 'cut' | 'copy';
 }
 
+export interface BaseActionProps {
+    get: () => OutlinerState;
+}
+
+export interface CoreActionProps extends BaseActionProps {
+    set: (state: Partial<OutlinerState>) => void;
+}
+
+export interface SingleNodeActionProps extends BaseActionProps {
+    id: NodeId;
+}
+
+export interface MultiNodeActionProps extends BaseActionProps {
+    ids: NodeId[];
+}
+
+export interface CoreNodeActionProps extends CoreActionProps {
+    id: NodeId;
+}
+
 export interface SlashMenuState {
     isOpen: boolean;
     position: { x: number; y: number } | null;
